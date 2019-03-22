@@ -10,13 +10,59 @@
 #include "pa1.h"
 #include "common.h"
 #include "log.h"
+#include "ipc.h"
 
+typedef struct {
+	int id;
+	int quantity;
+	int readPipes[15][2];
+	int writePipes[15][2];
+} ProcessPipes;
+
+int openPipes( ProcessPipes *curPipes ){
+        int i=0;
+        do {
+                if (pipe(curPipes->readPipes[i]) == -1) {
+                        return -1;
+                }
+                if (pipe(curPipes->writePipes[i]) == -1) {
+                        return -1;
+		}
+                i++;
+        } while((i < curPipes->quantity));
+	return 0;
+}
+
+int closeAllPipes( ProcessPipes curPipes ){
+	int i=0;
+        do {
+                if (close(curPipes.readPipes[i][0]) == -1) {
+                        printf("Error closing reading end of pipe %d in %d.\n", curPipes.readPipes[i][0], i );
+                        return -1;
+                }
+                if (close(curPipes.readPipes[i][1]) == -1) {
+                        printf("Error closing writing end of pipe %d.\n", i);
+                        return -1;
+                }
+                if (close(curPipes.writePipes[i][0]) == -1) {
+                        printf("Error closing reading end of pipe %d.\n", i);
+                        return -1;
+                }
+                if (close(curPipes.writePipes[i][1]) == -1) {
+                        printf("Error closing writing end of pipe %d.\n", i);
+                        return -1;
+                }
+                i++;
+	} while( i < curPipes.quantity);
+	return 0;
+}
 
 int main( int argc, char** argv ){
 	int targetFork = 1; 
 	int id = 0;
 	pid_t forkResult;
-	
+	ProcessPipes curPipes;
+
 	if( argc > 2 && id == 0 ){	
 		fclose(fopen(events_log, "w"));
 		fclose(fopen(pipes_log, "w"));	
@@ -39,6 +85,17 @@ int main( int argc, char** argv ){
 		return 0;
 	}
 
+	curPipes.quantity = targetFork;
+	
+	if( id == 0 && openPipes(&curPipes) == -1 ) {
+		printf("Wrong event with open pipes. Finish programm\n");
+		return 1;
+	}
+	if( id == 0 && closeAllPipes(curPipes) == -1 ) {
+		printf("Wrong event with close pipes. Finish programm.\n");
+		return 1;
+	}
+	
 	do{
 		forkResult = fork();
 		id++;
