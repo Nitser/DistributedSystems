@@ -7,25 +7,24 @@
 #include <limits.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <time.h>
 #include "pa1.h"
 #include "common.h"
 #include "log.h"
 #include "ipc.h"
 #include "pipe.h"
 
-
 int main( int argc, char** argv ){
 	int targetFork = 1; 
-	int id = 1;
+	int id = 0;
 	pid_t forkResult;
 	ProcessPipes curPipes;
 
-	if( argc > 2 ){	
+	if (argc > 2 && id == 0){	
 		fclose(fopen(events_log, "w"));
 		fclose(fopen(pipes_log, "w"));	
 		char *p;
 		errno = 0;
-		id = 0;
 		if(strcmp(argv[1], "-p") == 0){
 			long conv = strtol(argv[2], &p, 10);
 			if (errno != 0 || *p != '\0' || conv > INT_MAX) {
@@ -45,39 +44,47 @@ int main( int argc, char** argv ){
 
 	curPipes.quantity = targetFork;
 	
-	if( id == 0 && openPipes(&curPipes) == -1 ) {
+	if(id == 0 && openPipes(&curPipes) == -1) {
 		printf("Wrong event with open pipes. Finish programm\n");
 		return 1;
 	}
-	/*if( id == 0 && closeAllPipes(curPipes) == -1 ) {
+	if(id == 0 && closeAllPipes(curPipes) == -1) {
 		printf("Wrong event with close pipes. Finish programm.\n");
 		return 1;
-	}*/
+	}
 	
-	do{
-		curPipes.id = id;	
+	do {
 		forkResult = fork();
 		id++;
-	} while( (forkResult != 0 && forkResult != -1) && (id < targetFork));
+	} while((forkResult != 0 && forkResult != -1) && (id < targetFork));
 
-		if( forkResult == 0 ){
-			Message msg;	
-			msg.s_header.s_magic = MESSAGE_MAGIC;	
-			msg.s_header.s_type = STARTED;
-			/* START */	
-			sprintf(msg.s_payload, log_started_fmt, id, getpid(), getppid());
-			log_print(events_log, msg.s_payload);	
-			/* END */
-			sprintf(msg.s_payload, log_done_fmt, id);
-			log_print(events_log, msg.s_payload);
-		} else if( forkResult != -1 ){
-			printf("Main process %d is waiting...\n", getpid());
-			wait(NULL);
-			sleep(3);
-			printf("Main is exiting\n");
-		} else {
-			perror("Error while calling the fork function\n");
+	if(forkResult == 0) {
+		char *str = "Hello world!";
+		curPipes.id = id;
+		Message send_msg = create_message(str, sizeof(char) * sizeof(*str), STARTED);
+		if (send_multicast(&curPipes, &send_msg) == -1) {
+			return -1;
 		}
+		
+		printf(log_started_fmt, id, getpid(), getppid());
+		log_print(events_log, "start");
+	
+		Message receive_message;
+		if (receive_any(&curPipes, &receive_message) == -1) {
+			return -1;
+		}
+
+		printf(log_done_fmt, id);
+		log_print(events_log, "end");
+	} else if(forkResult != -1) {
+		printf("Main is waiting...\n");
+		wait(NULL);
+		sleep(3);
+		printf("Main is exiting\n");
+	} else {
+		perror("Error while calling the fork function\n");
+		return -1;
+	}
 
 	return 0;
 }

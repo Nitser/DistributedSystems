@@ -1,2 +1,4 @@
 *.log
 *.svp
+.vscode
+a.out
