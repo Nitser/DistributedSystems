@@ -2,3 +2,5 @@
 *.svp
 .vscode
 a.out
+*.exe
+start
