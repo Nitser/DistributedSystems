@@ -48,10 +48,6 @@ int main( int argc, char** argv ){
 		printf("Wrong event with open pipes. Finish programm\n");
 		return 1;
 	}
-	if(id == 0 && closeAllPipes(curPipes) == -1) {
-		printf("Wrong event with close pipes. Finish programm.\n");
-		return 1;
-	}
 	
 	do {
 		forkResult = fork();
@@ -59,28 +55,49 @@ int main( int argc, char** argv ){
 	} while((forkResult != 0 && forkResult != -1) && (id < targetFork));
 
 	if(forkResult == 0) {
-		char *str = "Hello world!";
 		curPipes.id = id;
-		Message send_msg = create_message(str, sizeof(char) * sizeof(*str), STARTED);
+
+		char str[MAX_PAYLOAD_LEN] = "";
+		sprintf(str, log_started_fmt, id, getpid(), getppid());
+		Message send_msg = create_message(str, sizeof(char) * sizeof(str), STARTED);
+		
 		if (send_multicast(&curPipes, &send_msg) == -1) {
 			return -1;
 		}
 		
-		printf(log_started_fmt, id, getpid(), getppid());
-		log_print(events_log, "start");
-	
+		log_print(events_log, send_msg.s_payload);
+		printf("%s", str);
+
 		Message receive_message;
 		if (receive_any(&curPipes, &receive_message) == -1) {
 			return -1;
 		}
 
-		printf(log_done_fmt, id);
-		log_print(events_log, "end");
+		sprintf(str, log_received_all_started_fmt, id);
+		log_print(events_log, str);
+		printf("%s", str);
+		
+		/// done
+		sprintf(str, log_done_fmt, id);
+		Message send_msg_done = create_message(str, sizeof(char) * sizeof(str), DONE);
+		if (send_multicast(&curPipes, &send_msg_done) == -1) {
+			return -1;
+		}
+		
+		log_print(events_log, send_msg_done.s_payload);
+		printf("%s", str);
+
+		Message receive_messag_done;
+		if (receive_any(&curPipes, &receive_messag_done) == -1) {
+			return -1;
+		}
+
+		sprintf(str, log_received_all_done_fmt, id);
+		log_print(events_log, str);
+		printf("%s", str);
 	} else if(forkResult != -1) {
-		printf("Main is waiting...\n");
 		wait(NULL);
 		sleep(3);
-		printf("Main is exiting\n");
 	} else {
 		perror("Error while calling the fork function\n");
 		return -1;
