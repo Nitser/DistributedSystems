@@ -1,6 +1,7 @@
 #include "pipe.h"
 #include "common.h"
 #include <errno.h>
+#include <fcntl.h>
 
 int send(void * self, local_id dst, const Message * msg) {
 	int w_fd = *((int*)self);
@@ -34,7 +35,6 @@ int receive(void * self, local_id from, Message * msg) {
 
 	size_t read_size = read(r_fd, msg, message_size);
 	if (read_size != message_size) {
-		printf("Can`t read from pipe; message_size = %zu; read_size = %zu\n", message_size, read_size);
 		return -1;
 	}
 	return 0;
@@ -43,17 +43,19 @@ int receive(void * self, local_id from, Message * msg) {
 int receive_any(void * self, Message * msg) {
 	ProcessPipes *pipes = (ProcessPipes*)self;
 	int pid = pipes->id;	
+	int found = -1;
 	for (local_id id = 1; id <= pipes->quantity; id++) {
 		int r_fd = pipes->writePipes[id][pid][0];
 		if (r_fd != -1 && pid != id) {
 			if (receive(&r_fd, id, msg) == -1) {
-				return -1;
+				//return -1;
 			} else {
-				return 0;
+				found = 0;
+				return found;
 			}
 		}
 	}
-	return 0;
+	return found;
 }
 
 int openPipes( ProcessPipes *curPipes ){
@@ -65,7 +67,10 @@ int openPipes( ProcessPipes *curPipes ){
                         		printf("Error to open %d - %d pipe\n",pid, i); 	
 					return -1;
 				}
-				printf("Open %d - %d pipe\n", pid, i);
+				if (fcntl(curPipes->writePipes[pid][i][0], F_SETFL, O_NONBLOCK) < 0){
+					printf("problem in fcntl");
+				}
+				//printf("Open %d - %d pipe\n", pid, i);
 			}
 		}
 	}
