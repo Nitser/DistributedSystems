@@ -100,8 +100,32 @@ int main( int argc, char** argv ){
 		log_print(events_log, str);
 		
 	} else if(forkResult != -1) {
-		wait(NULL);
-		sleep(3);
+		char str[MAX_PAYLOAD_LEN] = "";	
+		int i;
+		id = 0;
+		Message receive_message;
+		//recieve start messages
+		for(i=1; i<=targetFork; i++){
+                        if (receive_any(&curPipes, &receive_message) == -1) {
+                                i--;
+                        }
+                }
+                sprintf(str, log_received_all_started_fmt, id);
+                printf("%s", str);
+                log_print(events_log, str);	
+	
+		//recieve done messages	
+		for(i=1; i<=targetFork; i++){
+                        if (receive_any(&curPipes, &receive_message) == -1) {
+                                i--;
+                        }
+                }
+                sprintf(str, log_received_all_done_fmt, id);
+                printf("%s", str);
+
+		for(i=1; i<targetFork; i++){
+			wait(NULL);
+		}
 		closeAllPipes(curPipes);
 	} else {
 		perror("Error while calling the fork function\n");

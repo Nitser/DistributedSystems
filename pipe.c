@@ -18,7 +18,7 @@ int send(void * self, local_id dst, const Message * msg) {
 int send_multicast(void * self, const Message * msg) {
 	ProcessPipes *pipes = (ProcessPipes*)self;
 	int pid = pipes->id;
-	for (local_id id = 1; id <= pipes->quantity; id++) {
+	for (local_id id = 0; id <= pipes->quantity; id++) {
 		int w_fd = pipes->writePipes[pid][id][1];
 		if (w_fd != -1 && pid != id) {
 			if (send(&w_fd, id, msg) == -1) {
@@ -60,6 +60,7 @@ int receive_any(void * self, Message * msg) {
 
 int openPipes( ProcessPipes *curPipes ){
         int i, pid;
+	char str[MAX_PAYLOAD_LEN] = "";
        	for( pid = 1; pid <= curPipes->quantity; pid++){ 
 		for( i = 0; i <= curPipes->quantity; i++){			
 			if( i != pid ){
@@ -70,7 +71,8 @@ int openPipes( ProcessPipes *curPipes ){
 				if (fcntl(curPipes->writePipes[pid][i][0], F_SETFL, O_NONBLOCK) < 0){
 					printf("problem in fcntl");
 				}
-				//printf("Open %d - %d pipe\n", pid, i);
+				sprintf(str, "Open %d - %d pipe\n", pid, i); 
+				log_print(pipes_log, str);
 			}
 		}
 	}
