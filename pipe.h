@@ -8,7 +8,7 @@
 #include "ipc.h"
 #include "pa1.h"
 
-typedef int Pipe[15][2];
+typedef int Pipe[15][15][2];
 
 typedef struct {
 	int id;
