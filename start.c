@@ -17,12 +17,12 @@
 int main( int argc, char** argv ){
 	int targetFork = 1; 
 	int id = 0;
-	pid_t forkResult;
+	int forkResult;
+	FILE * fevents_log;
 	ProcessPipes curPipes;
 
 	if (argc > 2 && id == 0){	
-		fclose(fopen(events_log, "w"));
-		fclose(fopen(pipes_log, "w"));	
+		fevents_log = log_open(events_log);
 		char *p;
 		errno = 0;
 		if(strcmp(argv[1], "-p") == 0){
@@ -58,17 +58,18 @@ int main( int argc, char** argv ){
 		curPipes.id = id;
 
 		char str[MAX_PAYLOAD_LEN] = "";
-		sprintf(str, log_started_fmt, id, getpid(), getppid());
-		Message send_msg = create_message(str, sizeof(char) * sizeof(str), STARTED);
+		int len = sprintf(str, log_started_fmt, id, getpid(), getppid());
+		
+		Message send_msg = create_message(str, len, STARTED);
 		if (send_multicast(&curPipes, &send_msg) == -1) {
 			return -1;
 		}
 		printf("%s", send_msg.s_payload);	
-		log_print(events_log, send_msg.s_payload);
+		log_print(fevents_log, events_log, send_msg.s_payload);
 		
 		//receive	
 		int i;	
-		Message receive_message;
+		Message receive_message = create_message("", len, STARTED);
 		for(i=1; i<targetFork; i++){
 			if (receive_any(&curPipes, &receive_message) == -1) {
 				i--;
@@ -76,35 +77,39 @@ int main( int argc, char** argv ){
 		}
 		sprintf(str, log_received_all_started_fmt, id);
 		printf("%s", str);	
-		log_print(events_log, str);
-		
+		log_print(fevents_log, events_log, str);
+	
 		/// done
-		sprintf(str, log_done_fmt, id);
-		Message send_msg_done = create_message(str, sizeof(char) * sizeof(str), DONE);
+		len = sprintf(str, log_done_fmt, id);
+		Message send_msg_done = create_message(str, len, DONE);
 		if (send_multicast(&curPipes, &send_msg_done) == -1) {
 			return -1;
 		}
-		
 		printf("%s", str);	
-		log_print(events_log, send_msg_done.s_payload);
+		log_print(fevents_log, events_log, send_msg_done.s_payload);
 	
 		// recieve done
-		Message receive_messag_done;
+		Message receive_message_done = create_message("", len, DONE);
 		for(i=1; i<targetFork; i++){
-			if (receive_any(&curPipes, &receive_messag_done) == -1) {
+			if (receive_any(&curPipes, &receive_message_done) == -1) {
 				i--;
+			}
+			else {
+				printf("Process %d get message: %s", id, receive_message_done.s_payload);
 			}
 		}
 		sprintf(str, log_received_all_done_fmt, id);
 		printf("%s", str);	
-		log_print(events_log, str);
+		log_print(fevents_log, events_log, str);
 		
 	} else if(forkResult != -1) {
 		char str[MAX_PAYLOAD_LEN] = "";	
 		int i;
 		id = 0;
-		Message receive_message;
+		
 		//recieve start messages
+		int len = sprintf(str, log_started_fmt, id, getpid(), getppid());
+                Message receive_message = create_message("", len, STARTED);	
 		for(i=1; i<=targetFork; i++){
                         if (receive_any(&curPipes, &receive_message) == -1) {
                                 i--;
@@ -112,21 +117,25 @@ int main( int argc, char** argv ){
                 }
                 sprintf(str, log_received_all_started_fmt, id);
                 printf("%s", str);
-                log_print(events_log, str);	
+                log_print(fevents_log, events_log, str);	
 	
 		//recieve done messages	
+		len = sprintf(str, log_done_fmt, id);	
+		receive_message = create_message("", len, DONE);	
 		for(i=1; i<=targetFork; i++){
                         if (receive_any(&curPipes, &receive_message) == -1) {
                                 i--;
-                        }
+                        } 
                 }
                 sprintf(str, log_received_all_done_fmt, id);
                 printf("%s", str);
 
-		for(i=1; i<targetFork; i++){
+		for(i=1; i<=targetFork; i++){	
 			wait(NULL);
+			printf("get null\n");
 		}
 		closeAllPipes(curPipes);
+		log_close(fevents_log);
 	} else {
 		perror("Error while calling the fork function\n");
 		return -1;

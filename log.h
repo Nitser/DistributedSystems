@@ -4,4 +4,8 @@
 #include <stdlib.h>
 #include "common.h"
 
-void log_print(const char * const filename, const char * const fmt);
+FILE * log_open(const char * const filename);
+
+void log_print(FILE * fp, const char * const filename, const char * const fmt);
+
+void log_close( FILE * fp );

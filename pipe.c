@@ -5,7 +5,7 @@
 
 int send(void * self, local_id dst, const Message * msg) {
 	int w_fd = *((int*)self);
-	ssize_t message_size = sizeof(Message);
+	ssize_t message_size = sizeof(MessageHeader) + (*msg).s_header.s_payload_len;
 	ssize_t write_size = write(w_fd, msg, message_size);
 	
 	if (write_size != message_size) {
@@ -31,7 +31,7 @@ int send_multicast(void * self, const Message * msg) {
 
 int receive(void * self, local_id from, Message * msg) {
 	int r_fd = *((int*)self);
-	size_t message_size = sizeof(Message);
+	size_t message_size = sizeof(MessageHeader) + (*msg).s_header.s_payload_len;
 
 	size_t read_size = read(r_fd, msg, message_size);
 	if (read_size != message_size) {
@@ -61,7 +61,8 @@ int receive_any(void * self, Message * msg) {
 int openPipes( ProcessPipes *curPipes ){
         int i, pid;
 	char str[MAX_PAYLOAD_LEN] = "";
-       	for( pid = 1; pid <= curPipes->quantity; pid++){ 
+	FILE * fpipes_log = log_open(pipes_log);
+       	for( pid = 0; pid <= curPipes->quantity; pid++){ 
 		for( i = 0; i <= curPipes->quantity; i++){			
 			if( i != pid ){
                 		if (pipe(curPipes->writePipes[pid][i]) == -1) {
@@ -72,16 +73,17 @@ int openPipes( ProcessPipes *curPipes ){
 					printf("problem in fcntl");
 				}
 				sprintf(str, "Open %d - %d pipe\n", pid, i); 
-				log_print(pipes_log, str);
+				log_print(fpipes_log, pipes_log, str);
 			}
 		}
 	}
+	log_close(fpipes_log);
 	return 0;
 }
 
 int closeAllPipes( ProcessPipes curPipes ){
 	int i, pid ;
-       	for( pid = 1; pid <= curPipes.quantity; pid++){ 
+       	for( pid = 0; pid <= curPipes.quantity; pid++){ 
 		for( i = 0; i <= curPipes.quantity; i++){
                 	if (pid!= i && close(curPipes.writePipes[pid][i][0]) == -1) {
                         	printf("Error closing reading end of pipe %d in %d.\n", i, pid);
