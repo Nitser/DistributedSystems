@@ -70,7 +70,7 @@ int main( int argc, char** argv ){
 		//receive	
 		int i;	
 		Message receive_message = create_message("", len, STARTED);
-		for(i=1; i<targetFork; i++){
+		for(i = 1; i < targetFork; i++){
 			if (receive_any(&curPipes, &receive_message) == -1) {
 				i--;
 			}
@@ -90,7 +90,7 @@ int main( int argc, char** argv ){
 	
 		// recieve done
 		Message receive_message_done = create_message("", len, DONE);
-		for(i=1; i<targetFork; i++){
+		for(i = 1; i < targetFork; i++){
 			if (receive_any(&curPipes, &receive_message_done) == -1) {
 				i--;
 			}
@@ -110,27 +110,27 @@ int main( int argc, char** argv ){
 		//recieve start messages
 		int len = sprintf(str, log_started_fmt, id, getpid(), getppid());
                 Message receive_message = create_message("", len, STARTED);	
-		for(i=1; i<=targetFork; i++){
-                        if (receive_any(&curPipes, &receive_message) == -1) {
-                                i--;
-                        }
-                }
-                sprintf(str, log_received_all_started_fmt, id);
-                printf("%s", str);
-                log_print(fevents_log, events_log, str);	
+		for(i = 1; i <= targetFork; i++){
+			if (receive_any(&curPipes, &receive_message) == -1) {
+					i--;
+			}
+		}
+		sprintf(str, log_received_all_started_fmt, id);
+		printf("%s", str);
+		log_print(fevents_log, events_log, str);	
 	
 		//recieve done messages	
 		len = sprintf(str, log_done_fmt, id);	
 		receive_message = create_message("", len, DONE);	
-		for(i=1; i<=targetFork; i++){
-                        if (receive_any(&curPipes, &receive_message) == -1) {
-                                i--;
-                        } 
-                }
+		for(i=1; i<= targetFork; i++){
+			if (receive_any(&curPipes, &receive_message) == -1) {
+					i--;
+			} 
+		}
                 sprintf(str, log_received_all_done_fmt, id);
                 printf("%s", str);
 
-		for(i=1; i<=targetFork; i++){	
+		for(i = 1; i<= targetFork; i++){	
 			wait(NULL);
 			printf("get null\n");
 		}
