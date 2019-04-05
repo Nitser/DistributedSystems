@@ -21,8 +21,7 @@ int main( int argc, char** argv ){
 	FILE * fevents_log;
 	ProcessPipes curPipes;
 
-	if (argc > 2 && id == 0){	
-		fevents_log = log_open(events_log);
+	if (argc > 2 ){	
 		char *p;
 		errno = 0;
 		if(strcmp(argv[1], "-p") == 0){
@@ -44,12 +43,15 @@ int main( int argc, char** argv ){
 
 	curPipes.quantity = targetFork;
 	
-	if(id == 0 && openPipes(&curPipes) == -1) {
-		printf("Wrong event with open pipes. Finish programm\n");
-		return 1;
-	}
-	
 	do {
+		if(id == 0  && openPipes(&curPipes) == -1) {
+			
+			printf("Wrong event with open pipes. Finish programm\n");
+                	return 1;
+        	} else if (id == 0){ 
+			fevents_log = log_open(events_log);
+	 	} 
+
 		forkResult = fork();
 		id++;
 	} while((forkResult != 0 && forkResult != -1) && (id < targetFork));
@@ -73,7 +75,9 @@ int main( int argc, char** argv ){
 		for(i=1; i<targetFork; i++){
 			if (receive_any(&curPipes, &receive_message) == -1) {
 				i--;
-			}
+			} else if(id == targetFork) {
+                              printf("Process %d get message: %s", id, receive_message.s_payload);
+                        }
 		}
 		sprintf(str, log_received_all_started_fmt, id);
 		printf("%s", str);	
@@ -95,7 +99,7 @@ int main( int argc, char** argv ){
 				i--;
 			}
 			else {
-				printf("Process %d get message: %s", id, receive_message_done.s_payload);
+			//	printf("Process %d get message: %s", id, receive_message_done.s_payload);
 			}
 		}
 		sprintf(str, log_received_all_done_fmt, id);
@@ -106,7 +110,8 @@ int main( int argc, char** argv ){
 		char str[MAX_PAYLOAD_LEN] = "";	
 		int i;
 		id = 0;
-		
+	
+
 		//recieve start messages
 		int len = sprintf(str, log_started_fmt, id, getpid(), getppid());
                 Message receive_message = create_message("", len, STARTED);	

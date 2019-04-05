@@ -4,6 +4,7 @@
 #include <stdarg.h>
 #include <time.h>
 
+#include <stdbool.h> 
 #include "log.h"
 #include "ipc.h"
 #include "pa1.h"
@@ -11,7 +12,7 @@
 typedef int Pipe[15][15][2];
 
 typedef struct {
-	int id;
+	int id ;
 	int quantity;
 	Pipe readPipes;
 	Pipe writePipes;

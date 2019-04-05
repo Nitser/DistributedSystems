@@ -23,7 +23,7 @@ int send_multicast(void * self, const Message * msg) {
 		if (w_fd != -1 && pid != id) {
 			if (send(&w_fd, id, msg) == -1) {
 				return -1;
-			}
+			} 
 		}
 	}
 	return 0;
@@ -47,8 +47,8 @@ int receive_any(void * self, Message * msg) {
 	for (local_id id = 1; id <= pipes->quantity; id++) {
 		int r_fd = pipes->writePipes[id][pid][0];
 		if (r_fd != -1 && pid != id) {
-			if (receive(&r_fd, id, msg) == -1) {
-				//return -1;
+			if ( receive(&r_fd, id, msg) == -1) {
+			//	printf("flag %d - %d is %d\n", id, pid, pipes->pipesFlag[id][pid]); 	
 			} else {
 				found = 0;
 				return found;
@@ -78,6 +78,7 @@ int openPipes( ProcessPipes *curPipes ){
 		}
 	}
 	log_close(fpipes_log);
+
 	return 0;
 }
 
