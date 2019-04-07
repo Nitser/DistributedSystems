@@ -18,6 +18,7 @@ int send(void * self, local_id dst, const Message * msg) {
 int send_multicast(void * self, const Message * msg) {
 	ProcessPipes *pipes = (ProcessPipes*)self;
 	int pid = pipes->id;
+	sleep(1);
 	for (local_id id = 0; id <= pipes->quantity; id++) {
 		int w_fd = pipes->writePipes[pid][id][1];
 		if (w_fd != -1 && pid != id) {
@@ -34,7 +35,7 @@ int receive(void * self, local_id from, Message * msg) {
 	size_t message_size = sizeof(MessageHeader) + (*msg).s_header.s_payload_len;
 
 	size_t read_size = read(r_fd, msg, message_size);
-	if (read_size != message_size) {
+	if (read_size != message_size && read_size != message_size + 1 ) {
 		return -1;
 	}
 	return 0;
@@ -48,7 +49,6 @@ int receive_any(void * self, Message * msg) {
 		int r_fd = pipes->writePipes[id][pid][0];
 		if (r_fd != -1 && pid != id) {
 			if ( receive(&r_fd, id, msg) == -1) {
-			//	printf("flag %d - %d is %d\n", id, pid, pipes->pipesFlag[id][pid]); 	
 			} else {
 				found = 0;
 				return found;
@@ -62,6 +62,7 @@ int openPipes( ProcessPipes *curPipes ){
         int i, pid;
 	char str[MAX_PAYLOAD_LEN] = "";
 	FILE * fpipes_log = log_open(pipes_log);
+	curPipes->eventsLog = log_open(events_log);	
        	for( pid = 0; pid <= curPipes->quantity; pid++){ 
 		for( i = 0; i <= curPipes->quantity; i++){			
 			if( i != pid ){
@@ -78,23 +79,62 @@ int openPipes( ProcessPipes *curPipes ){
 		}
 	}
 	log_close(fpipes_log);
-
 	return 0;
 }
 
-int closeAllPipes( ProcessPipes curPipes ){
-	int i, pid ;
-       	for( pid = 0; pid <= curPipes.quantity; pid++){ 
-		for( i = 0; i <= curPipes.quantity; i++){
-                	if (pid!= i && close(curPipes.writePipes[pid][i][0]) == -1) {
-                        	printf("Error closing reading end of pipe %d in %d.\n", i, pid);
-                        	return -1;
-                	}
-                	if (pid != i && close(curPipes.writePipes[pid][i][1]) == -1) {
-                        	printf("Error closing writing end of pipe %d in %d.\n", i, pid);
-                        	return -1;
-                	}
-		}
+int closeUnusingPipesById( ProcessPipes curPipes, int pid){
+	int i, j;
+	for( i=0; i<=curPipes.quantity; i++){
+		for( j=0; j<=curPipes.quantity; j++ ){	
+			if ( i != pid && j != pid && i != j ) {
+				if ( close(curPipes.writePipes[i][j][0]) == -1) {
+                                        printf("Error closing reading end of pipe %d in %d.\n", i, j);
+                                        return -1;
+                                }
+                                if ( close(curPipes.writePipes[i][j][1]) == -1) {
+                                        printf("Error closing writing end of pipe %d in %d.\n", i, j);
+                                        return -1;
+                                }
+			//	printf("Process %d: close unusing pipe %d - %d\n", pid, i, j);
+			} else if ( i!=j && i == pid ){
+				 if ( close(curPipes.writePipes[i][j][0]) == -1) {
+                                        printf("Error closing reading end of pipe %d in %d.\n", i, j);
+                                        return -1;
+                                }
+			} else if ( i!=j && j == pid ) {
+				 if ( close(curPipes.writePipes[i][j][1]) == -1) {
+                                        printf("Error closing writing of pipe %d in %d.\n", i, j);
+                                        return -1;
+                                }
+			}
+		}	
+	}	
+	return 0;
+}
+
+int closeUsingPipesById( ProcessPipes curPipes, int pid ){
+	int i;
+       	for( i = 0; i <= curPipes.quantity; i++){ 
+			if(pid != i){
+				/*if ( close(curPipes.writePipes[pid][i][0]) == -1) {
+						printf("Error closing reading end of pipe %d in %d.\n", i, pid);
+						return -1;
+				}*/
+				if ( close(curPipes.writePipes[pid][i][1]) == -1) {
+						printf("Error closing writing end of pipe %d in %d.\n", i, pid);
+						return -1;
+				}
+				if ( close(curPipes.writePipes[i][pid][0]) == -1) {
+					printf("Error closing reading end of pipe %d in %d.\n", i, pid);
+					return -1;
+				}
+				/*if ( close(curPipes.writePipes[i][pid][1]) == -1) {
+						printf("Error closing writing end of pipe %d in %d.\n", i, pid);
+						return -1;
+				}*/
+				//printf("Process %d: close unusing pipe %d - %d\n", pid, pid, i);
+				//printf("Process %d: close unusing pipe %d - %d\n", pid, i, pid);
+			}
 	}
 	return 0;
 }

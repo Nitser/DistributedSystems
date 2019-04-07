@@ -14,8 +14,8 @@ typedef int Pipe[15][15][2];
 typedef struct {
 	int id ;
 	int quantity;
-	Pipe readPipes;
 	Pipe writePipes;
+	FILE * eventsLog;
 } ProcessPipes;
 
 enum {
@@ -25,7 +25,9 @@ enum {
 
 int openPipes( ProcessPipes *curPipes );
 
-int closeAllPipes( ProcessPipes curPipes );
+int closeUnusingPipesById( ProcessPipes curPipes, int pid );
+
+int closeUsingPipesById( ProcessPipes curPipes, int pid);
 
 MessageHeader create_message_header(uint16_t payload_len, MessageType type);
 Message create_message(char *payload, uint16_t payload_len, MessageType type);
