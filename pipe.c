@@ -43,7 +43,8 @@ int receive(void * self, local_id from, Message * msg) {
 
 int receive_any(void * self, Message * msg) {
 	ProcessPipes *pipes = (ProcessPipes*)self;
-	int pid = pipes->id;	
+	int pid = 0;
+	pid = pipes->id;
 	int found = -1;
 	for (local_id id = 1; id <= pipes->quantity; id++) {
 		int r_fd = pipes->writePipes[id][pid][0];
