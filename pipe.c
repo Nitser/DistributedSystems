@@ -32,10 +32,12 @@ int send_multicast(void * self, const Message * msg) {
 
 int receive(void * self, local_id from, Message * msg) {
 	int r_fd = *((int*)self);
+	size_t header_size = read(r_fd, &(msg->s_header), sizeof(MessageHeader));
+	//printf("f_reaf_s = %d, ", header_size);
 	size_t message_size = sizeof(MessageHeader) + (*msg).s_header.s_payload_len;
-
-	size_t read_size = read(r_fd, msg, message_size);
-	if (read_size != message_size && read_size != message_size + 1 ) {
+	size_t body_size = read(r_fd, msg, message_size);
+	//printf("message_s = %d, read_s = %d\n", message_size, body_size);
+	if ((header_size+body_size) != message_size) {
 		return -1;
 	}
 	return 0;
@@ -146,6 +148,13 @@ MessageHeader create_message_header(uint16_t payload_len, MessageType type) {
 	header.s_payload_len = payload_len;
 	header.s_type = type;
 	header.s_local_time  = time(NULL);
+	return header;
+}
+
+MessageHeader create_empty_message_header(){
+	MessageHeader header;
+	header.s_magic = MESSAGE_MAGIC;
+	header.s_local_time = time(NULL);
 	return header;
 }
 
