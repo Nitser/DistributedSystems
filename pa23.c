@@ -84,7 +84,8 @@ void transfer(void * parent_data, local_id src, local_id dst,
 
 }
 
-int child_start(int id){
+int child_start(int id, int money){
+	printf("money = %d\n", money);
 	curPipes.id = id;
 	closeUnusingPipesById(curPipes, id);
         char str[MAX_PAYLOAD_LEN] = "";
@@ -160,7 +161,6 @@ int main(int argc, char * argv[])
 	targetFork = 1;
 	int id = 0;
 	int forkResult;
-	int *money_array;
 	if (argc > 2 ){
                 char *p;
                 errno = 0;
@@ -175,11 +175,6 @@ int main(int argc, char * argv[])
 				if (argc != conv + 3) {
 					printf("Use key -p X n1 n2 n3 ...\n");
 					return 1;
-				}
-				money_array = malloc(sizeof(int) * conv);
-				for (int i = 0; i < conv; i++) {
-					int value = atoi(argv[3 + i]);
-					money_array[i] = value;
 				}
                         }
                 } else {
@@ -206,13 +201,13 @@ int main(int argc, char * argv[])
         } while((forkResult != 0 && forkResult != -1) && (id < targetFork));
 
 	if(forkResult == 0) {
-		child_start(id);
+		int value = atoi(argv[2 + id]);
+		child_start(id, value);
 	} else if(forkResult != -1){
 		parent_start(0);
 	} else {
                 perror("Error while calling the fork function\n");
                 return -1;
         }
-	free(money_array);
    	return 0;
 }
