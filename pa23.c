@@ -18,7 +18,6 @@
 ProcessPipes curPipes;
 int targetFork;
 int *money_balance;
-BalanceHistory *balance_history;
 
 int send_message(int len, char* str, MessageType type){
 	Message send_msg = create_message(str, len, type);
@@ -90,9 +89,11 @@ int child_start(int id){
 	// printf("money = %d\n", money_balance[id - 1]);
 
 	// init history
+	BalanceHistory *balance_history;
 	balance_history = (BalanceHistory*)malloc(sizeof(BalanceHistory));
 	balance_history->s_id = id;
 	balance_history->s_history_len = 0;
+
 	curPipes.id = id;
 	closeUnusingPipesById(curPipes, id);
         char str[MAX_PAYLOAD_LEN] = "";
