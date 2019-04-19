@@ -160,7 +160,7 @@ int main(int argc, char * argv[])
 	targetFork = 1;
 	int id = 0;
 	int forkResult;
-
+	int *money_array;
 	if (argc > 2 ){
                 char *p;
                 errno = 0;
@@ -168,17 +168,26 @@ int main(int argc, char * argv[])
                         long conv = strtol(argv[2], &p, 10);
                         if (errno != 0 || *p != '\0' || conv > INT_MAX) 
 			{
-                                printf("Use key -p X\n");
+                                printf("Use key -p X n1 n2 n3 ...\n");
                                 return 1;
                         } else {
                                 targetFork = conv;
+				if (argc != conv + 3) {
+					printf("Use key -p X n1 n2 n3 ...\n");
+					return 1;
+				}
+				money_array = malloc(sizeof(int) * conv);
+				for (int i = 0; i < conv; i++) {
+					int value = atoi(argv[3 + i]);
+					money_array[i] = value;
+				}
                         }
                 } else {
-                        printf("Use key -p X\n");
+                        printf("Use key -p X n1 n2 n3 ...\n");
                         return 1;
                 }
         } else {
-                printf("Use key -p X\n");
+                printf("Use key -p X n1 n2 n3 ...\n");
                 return 0;
         }
 
@@ -198,14 +207,12 @@ int main(int argc, char * argv[])
 
 	if(forkResult == 0) {
 		child_start(id);
-	} 
-	else if(forkResult != -1){
+	} else if(forkResult != -1){
 		parent_start(0);
-	} 
-	else {
+	} else {
                 perror("Error while calling the fork function\n");
                 return -1;
         }
-
-    return 0;
+	free(money_array);
+   	return 0;
 }
