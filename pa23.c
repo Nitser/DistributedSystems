@@ -20,9 +20,9 @@ int targetFork;
 
 int send_message(int len, char* str, MessageType type){
 	Message send_msg = create_message(str, len, type);
-        if (send_multicast(&curPipes, &send_msg) == -1) {
+        if ( send_multicast(&curPipes, &send_msg) == -1) {
 		return -1;
-        }
+	}
 	return 0;
 }
 
@@ -50,24 +50,36 @@ void recieve_message(int len, char* str, MessageType type){
 void transfer(void * parent_data, local_id src, local_id dst,
               balance_t amount)
 {
-	/*char str[MAX_PAYLOAD_LEN] = "";
-	int len;
+	char str[MAX_PAYLOAD_LEN] = "";
+	int id = curPipes.id;
 	TransferOrder order;
 	order.s_src = src;
 	order.s_dst = dst;
-	order.s_amount = amount;*/
+	order.s_amount = amount;
+	memcpy(str, &order, sizeof order);
 
 	//printf("Transferi:\n");
 	/*send TRANSFER message*/
-	//len = sprintf(str, /*log*/, ... );
-	//send_message(len, str, TRANSFER);
+	int w_fd = curPipes.writePipes[id][src][1];
+	Message send_msg = create_message(str, sizeof order, TRANSFER);
+        if ( send(&w_fd, src, &send_msg) == -1) {
+               printf("error to send transfer msg\n"); 
+        }
 	//printf("%s", str);
 	//log_print(curPipes.eventsLog, events_log, str);	
-	//
+	
 	/*recive result of TRANSFER message*/
-	//recieve_message(len, str, TRANSFER);
-	//sprintf(str, /*log*/, ... );
-	//printf("%s", str);
+	Message recieve_message = create_message(str, sizeof order, TRANSFER);
+	int got = 0;
+	int r_fd = curPipes.writePipes[dst][id][0];
+	while( got == 0 ){
+		if(receive(&r_fd, id, &recieve_message) == -1){
+			sleep(1);
+		} else {
+			got = 1;
+		}	
+	}
+	printf("Main get message from %d about %d-%d operation\n", dst, src, dst);
 	//log_print(curPipes.eventsLog, events_log, str);
 
 }
@@ -119,14 +131,22 @@ int parent_start(int id){
           //log_print(curPipes.eventsLog, events_log, str);
 
 	  bank_robbery(&curPipes, targetFork);
-	  
-	  //print_history(all);
+	 
 
-	  recieve_message(len, str, DONE);
+          /*send STOP message*/
+	 /* len = sprintf(str, log_done_fmt, id);
+          send_message(len, str, DONE);
+          printf("%s", str);
+          log_print(curPipes.eventsLog, events_log, str);
+	*/
+	  /*recieve balance_history message*/
+	  /*recieve_message(len, str, DONE);
 	  sprintf(str, log_received_all_done_fmt, id);
           printf("%s", str);
           //log_print(curPipes.eventsLog, events_log, str);
-		
+	
+  	  //print_history(all);	  
+*/
 	  for(i = 1; i<= targetFork; i++){
 		  wait(NULL);
 	  }
