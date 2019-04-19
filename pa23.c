@@ -17,6 +17,8 @@
 
 ProcessPipes curPipes;
 int targetFork;
+int *money_balance;
+BalanceHistory *balance_history;
 
 int send_message(int len, char* str, MessageType type){
 	Message send_msg = create_message(str, len, type);
@@ -84,8 +86,13 @@ void transfer(void * parent_data, local_id src, local_id dst,
 
 }
 
-int child_start(int id, int money){
-	printf("money = %d\n", money);
+int child_start(int id){
+	// printf("money = %d\n", money_balance[id - 1]);
+
+	// init history
+	balance_history = (BalanceHistory*)malloc(sizeof(BalanceHistory));
+	balance_history->s_id = id;
+	balance_history->s_history_len = 0;
 	curPipes.id = id;
 	closeUnusingPipesById(curPipes, id);
         char str[MAX_PAYLOAD_LEN] = "";
@@ -176,6 +183,10 @@ int main(int argc, char * argv[])
 					printf("Use key -p X n1 n2 n3 ...\n");
 					return 1;
 				}
+				money_balance = malloc(sizeof(int) * conv);
+				for (int i = 0; i < conv; i++) {
+					money_balance[i] = atoi(argv[3 + i]);
+				}
                         }
                 } else {
                         printf("Use key -p X n1 n2 n3 ...\n");
@@ -201,13 +212,13 @@ int main(int argc, char * argv[])
         } while((forkResult != 0 && forkResult != -1) && (id < targetFork));
 
 	if(forkResult == 0) {
-		int value = atoi(argv[2 + id]);
-		child_start(id, value);
+		child_start(id);
 	} else if(forkResult != -1){
 		parent_start(0);
 	} else {
                 perror("Error while calling the fork function\n");
                 return -1;
         }
+	free(money_balance);
    	return 0;
 }
