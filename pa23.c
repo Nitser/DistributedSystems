@@ -86,13 +86,17 @@ void transfer(void * parent_data, local_id src, local_id dst,
 }
 
 int child_start(int id){
-	// printf("money = %d\n", money_balance[id - 1]);
+	// printf("money = %d\n", );
 
 	// init history
 	BalanceHistory *balance_history;
 	balance_history = (BalanceHistory*)malloc(sizeof(BalanceHistory));
 	balance_history->s_id = id;
 	balance_history->s_history_len = 0;
+
+	balance_history->s_history->s_balance = money_balance[id - 1];
+	balance_history->s_history->s_time = 0;
+	balance_history->s_history->s_balance_pending_in = 0;
 
 	curPipes.id = id;
 	closeUnusingPipesById(curPipes, id);
@@ -122,6 +126,8 @@ int child_start(int id){
 	
 	closeUsingPipesById(curPipes, id);
         log_close(curPipes.eventsLog);
+
+	free(balance_history);
 	return 0;
 }
 
