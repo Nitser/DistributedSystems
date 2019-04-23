@@ -18,6 +18,7 @@
 ProcessPipes curPipes;
 int targetFork;
 int *money_balance;
+BalanceHistory *balance_history;
 
 int send_message(int len, char* str, MessageType type){
 	Message send_msg = create_message(str, len, type);
@@ -85,18 +86,14 @@ void transfer(void * parent_data, local_id src, local_id dst,
 
 }
 
+
 int child_start(int id){
 	// printf("money = %d\n", );
 
 	// init history
-	BalanceHistory *balance_history;
 	balance_history = (BalanceHistory*)malloc(sizeof(BalanceHistory));
 	balance_history->s_id = id;
 	balance_history->s_history_len = 0;
-
-	balance_history->s_history->s_balance = money_balance[id - 1];
-	balance_history->s_history->s_time = 0;
-	balance_history->s_history->s_balance_pending_in = 0;
 
 	curPipes.id = id;
 	closeUnusingPipesById(curPipes, id);
@@ -111,18 +108,61 @@ int child_start(int id){
 	recieve_message(len, str, STARTED);
         sprintf(str, log_received_all_started_fmt, id);
         printf("%s", str);
+
+
+	bool isWork = true;
+	while (isWork) {
+		Message msg;
+		DataInfo info;
+		info.receive_id = 0;
+		info.sender_id = id;
+		// store_history(get_time(), pBalance[selfId]);
+
+		if (receive_any(&info, &msg) == 0) {
+			switch (msg.s_header.s_type) {
+			case TRANSFER: {
+					TransferOrder order;
+
+					// copy(msg.s_payload, &order, msg.s_header.s_payload_len);
+					int amount = order.s_amount;
+
+					if (info.receive_id == PARENT_ID) {
+						balance_history[id].s_history->s_balance -= amount;
+						//store_history(get_time(),balance_history[id]);
+
+						send(&info, order.s_dst, &msg);
+					} else {
+						balance_history[id].s_history->s_balance += amount;
+						//store_history(get_time(), balance_history[id]);
+
+						msg.s_header.s_local_time = time(NULL);
+						msg.s_header.s_magic = MESSAGE_MAGIC;
+						msg.s_header.s_type = ACK;
+						msg.s_header.s_payload_len = 0;
+						send(&info, PARENT_ID, &msg);
+					}
+				} break;
+			case STOP: {
+					isWork = false;
+					//store_history(get_time(), balance_history[id]);
+				} break;
+			default:
+				break;
+			}
+		}
+	}
       	//log_print(curPipes.eventsLog, events_log, str);
  
-	len = sprintf(str, log_done_fmt, id);
+	/*len = sprintf(str, log_done_fmt, id);
 	send_message(len, str, DONE);
 	printf("%s", str);
-        log_print(curPipes.eventsLog, events_log, str);
+        log_print(curPipes.eventsLog, events_log, str);*/
 
-	/*recieve done message*/	
+	/*
 	recieve_message(len, str, DONE);	
 	sprintf(str, log_received_all_done_fmt, id);
         printf("%s", str);
-	//log_print(curPipes.eventsLog, events_log, str);
+	//log_print(curPipes.eventsLog, events_log, str);*/
 	
 	closeUsingPipesById(curPipes, id);
         log_close(curPipes.eventsLog);
@@ -132,7 +172,6 @@ int child_start(int id){
 }
 
 int parent_start(int id){
-	  AllHistory all;
 	  char str[MAX_PAYLOAD_LEN] = "";
           int i;
           id = 0;
