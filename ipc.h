@@ -54,8 +54,12 @@ typedef struct {
     MessageHeader s_header;
     char s_payload[MAX_PAYLOAD_LEN]; ///< Must be used as a buffer, unused "tail"
                                      ///< shouldn't be transfered
-} __attribute__((packed)) Message;
+}  Message;
 
+typedef struct {
+	int receive_id;
+	int sender_id;
+}__attribute__((packed)) DataInfo;
 //------------------------------------------------------------------------------
 
 /** Send a message to the process specified by id.

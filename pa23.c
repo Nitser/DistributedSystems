@@ -17,7 +17,9 @@
 
 ProcessPipes curPipes;
 int targetFork;
-AllHistory all;
+
+int *money_balance;
+BalanceHistory *balance_history;
 
 int send_message(int len, char* str, MessageType type){
 	Message send_msg = create_message(str, len, type);
@@ -38,8 +40,8 @@ void recieve_message(int len, char* str, MessageType type){
                 	} else if(type == BALANCE_HISTORY){
 				BalanceHistory balance ;
 				memcpy (&balance, recieve_message.s_payload, sizeof(recieve_message.s_payload));
-				all.s_history[i-1] = balance;
-				all.s_history_len++;
+				//all.s_history[i-1] = balance;
+				//all.s_history_len++;
 			}
         	}
 	} else {
@@ -90,7 +92,15 @@ void transfer(void * parent_data, local_id src, local_id dst,
 
 }
 
+
 int child_start(int id){
+	// printf("money = %d\n", );
+
+	// init history
+	balance_history = (BalanceHistory*)malloc(sizeof(BalanceHistory));
+	balance_history->s_id = id;
+	balance_history->s_history_len = 0;
+
 	curPipes.id = id;
 	closeUnusingPipesById(curPipes, id);
         char str[MAX_PAYLOAD_LEN] = "";
@@ -104,6 +114,49 @@ int child_start(int id){
 	recieve_message(len, str, STARTED);
         sprintf(str, log_received_all_started_fmt, id);
         printf("%s", str);
+
+
+	bool isWork = true;
+	while (isWork) {
+		Message msg;
+		DataInfo info;
+		info.receive_id = 0;
+		info.sender_id = id;
+		// store_history(get_time(), pBalance[selfId]);
+
+		if (receive_any(&info, &msg) == 0) {
+			switch (msg.s_header.s_type) {
+			case TRANSFER: {
+					TransferOrder order;
+
+					// copy(msg.s_payload, &order, msg.s_header.s_payload_len);
+					int amount = order.s_amount;
+
+					if (info.receive_id == PARENT_ID) {
+						balance_history[id].s_history->s_balance -= amount;
+						//store_history(get_time(),balance_history[id]);
+
+						send(&info, order.s_dst, &msg);
+					} else {
+						balance_history[id].s_history->s_balance += amount;
+						//store_history(get_time(), balance_history[id]);
+
+						msg.s_header.s_local_time = time(NULL);
+						msg.s_header.s_magic = MESSAGE_MAGIC;
+						msg.s_header.s_type = ACK;
+						msg.s_header.s_payload_len = 0;
+						send(&info, PARENT_ID, &msg);
+					}
+				} break;
+			case STOP: {
+					isWork = false;
+					//store_history(get_time(), balance_history[id]);
+				} break;
+			default:
+				break;
+			}
+		}
+	}
       	//log_print(curPipes.eventsLog, events_log, str);
  
 	/*len = sprintf(str, log_done_fmt, id);
@@ -117,10 +170,11 @@ int child_start(int id){
         printf("%s", str);
 	//log_print(curPipes.eventsLog, events_log, str);
 
-	
 
 	closeUsingPipesById(curPipes, id);
         log_close(curPipes.eventsLog);
+
+	free(balance_history);
 	return 0;
 }
 
@@ -128,7 +182,7 @@ int parent_start(int id){
 	  char str[MAX_PAYLOAD_LEN] = "";
           int i;
           curPipes.id = id;
-	  all.s_history_len = 0;
+	  //all.s_history_len = 0;
           closeUnusingPipesById(curPipes, id);
 	  int len = sprintf(str, log_started_fmt, id, getpid(), getppid());
 		
@@ -151,7 +205,7 @@ int parent_start(int id){
           printf("%s", str);
           //log_print(curPipes.eventsLog, events_log, str);
 	
-  	  print_history(&all);	  
+  	  //print_history(&all);	  
 
 	  for(i = 1; i<= targetFork; i++){
 		  wait(NULL);
@@ -166,7 +220,6 @@ int main(int argc, char * argv[])
 	targetFork = 1;
 	int id = 0;
 	int forkResult;
-
 	if (argc > 2 ){
                 char *p;
                 errno = 0;
@@ -174,17 +227,25 @@ int main(int argc, char * argv[])
                         long conv = strtol(argv[2], &p, 10);
                         if (errno != 0 || *p != '\0' || conv > INT_MAX) 
 			{
-                                printf("Use key -p X\n");
+                                printf("Use key -p X n1 n2 n3 ...\n");
                                 return 1;
                         } else {
                                 targetFork = conv;
+				if (argc != conv + 3) {
+					printf("Use key -p X n1 n2 n3 ...\n");
+					return 1;
+				}
+				money_balance = malloc(sizeof(int) * conv);
+				for (int i = 0; i < conv; i++) {
+					money_balance[i] = atoi(argv[3 + i]);
+				}
                         }
                 } else {
-                        printf("Use key -p X\n");
+                        printf("Use key -p X n1 n2 n3 ...\n");
                         return 1;
                 }
         } else {
-                printf("Use key -p X\n");
+                printf("Use key -p X n1 n2 n3 ...\n");
                 return 0;
         }
 
@@ -204,14 +265,12 @@ int main(int argc, char * argv[])
 
 	if(forkResult == 0) {
 		child_start(id);
-	} 
-	else if(forkResult != -1){
+	} else if(forkResult != -1){
 		parent_start(0);
-	} 
-	else {
+	} else {
                 perror("Error while calling the fork function\n");
                 return -1;
         }
-
-    return 0;
+	free(money_balance);
+   	return 0;
 }
