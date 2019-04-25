@@ -36,6 +36,7 @@ int receive(void * self, local_id from, Message * msg) {
 	size_t message_size = sizeof(MessageHeader) + (*msg).s_header.s_payload_len;
 	size_t body_size = read(r_fd, msg->s_payload, message_size);
 	if ((header_size+body_size) != message_size) {
+//	if (header_size != sizeof(MessageHeader)) {
 		return -1;
 	}
 	return 0;
@@ -46,7 +47,7 @@ int receive_any(void * self, Message * msg) {
 	int pid = 0;
 	pid = pipes->id;
 	int found = -1;
-	for (local_id id = 1; id <= pipes->quantity; id++) {
+	for (local_id id = 0; id <= pipes->quantity; id++) {
 		int r_fd = pipes->writePipes[id][pid][0];
 		if (r_fd != -1 && pid != id) {
 			if ( receive(&r_fd, id, msg) == -1) {

@@ -57,7 +57,7 @@ void recieve_message(int len, char* str, MessageType type){
 
 void transfer(void * parent_data, local_id src, local_id dst, balance_t amount)
 {
-	char str[MAX_PAYLOAD_LEN] = "";
+	char str[MAX_PAYLOAD_LEN] = "transfer from parent process\n";
 	int id = curPipes.id;
 	TransferOrder order;
 	order.s_src = src;
@@ -65,29 +65,45 @@ void transfer(void * parent_data, local_id src, local_id dst, balance_t amount)
 	order.s_amount = amount;
 	memcpy(str, &order, sizeof order);
 
-	printf("Parent process start transfering...\n");
 	/*send TRANSFER message*/
+	int len = sizeof(str);
 	int w_fd = curPipes.writePipes[id][src][1];
-	Message send_msg = create_message(str, sizeof order, TRANSFER);
+	Message send_msg = create_message(str, len, TRANSFER);
         if ( send(&w_fd, src, &send_msg) == -1) {
                printf("error to send transfer msg\n"); 
         }
+	 
+	//   int len = sprintf(str, log_done_fmt, id);
+        //   send_message(len, str, STOP);
+     
+	// printf("Parent process send TRANSFER message %d-%d\n", src, dst);
+
+	// Message recieve_message = create_message(str, sizeof str, STOP);
+	// int r_fd = curPipes.writePipes[0][1][0];
+	// if ( receive(&curPipes, 0, &recieve_message) == -1 ){
+	// 	printf("no recieve \n");
+	// 	sleep(1);
+	// } else
+	// {
+	// 	printf("Get! %s\n", recieve_message.s_payload);
+	// }
+	
 	//printf("%s", str);
 	//log_print(curPipes.eventsLog, events_log, str);	
-	printf("Parent process send TRANSFER message %d-%d\n", src, dst);
-
-	/*recive result of TRANSFER message*/
-	Message recieve_message = create_message(str, sizeof order, TRANSFER);
-	int got = 0;
-	int r_fd = curPipes.writePipes[dst][id][0];
-	while( got == 0 ){
-		if(receive(&r_fd, id, &recieve_message) == -1){
-			sleep(1);
-		} else {
-			got = 1;
-		}	
-	}
-	printf("Main get message from %d about %d-%d operation\n", dst, src, dst);
+	
+	// /*recive result of TRANSFER message*/
+	// Message recieve_message = create_message(str, sizeof order, TRANSFER);
+	// int got = 0;
+	// int r_fd = curPipes.writePipes[dst][id][0];
+	// while( got == 0 ){
+	// 	if(receive(&r_fd, id, &recieve_message) == -1){
+	// 		sleep(1);
+	// 	} else {
+	// 		got = 1;
+	// 	}
+	// 	sleep(1);	
+	// }
+	// printf("Main get message from %d about %d-%d operation\n", dst, src, dst);
 	//log_print(curPipes.eventsLog, events_log, str);
 
 }
@@ -108,17 +124,12 @@ int child_start(int id){
 	int len = sprintf(str, log_started_fmt, id, getpid(), getppid());
 	
 	send_message(len, str, STARTED);
+	// send_message(len, str, STARTED);
 	printf("%s", str);
         log_print(curPipes.eventsLog, events_log, str);
 
-	// /*recieve start message*/	
-	// recieve_message(len, str, STARTED);
-        // sprintf(str, log_received_all_started_fmt, id);
-        // printf("%s", str);
-
-
 	bool isWork = true;
-	while (isWork) {
+	while (isWork) { 
 		Message msg;
 		DataInfo info;
 		info.receive_id = 0;
@@ -133,25 +144,25 @@ int child_start(int id){
 					TransferOrder order;
 
 					// copy(msg.s_payload, &order, msg.s_header.s_payload_len);
-					int amount = order.s_amount;
+					// int amount = order.s_amount;
 
-					if (info.receive_id == PARENT_ID) {
-						balance_history[id].s_history->s_balance -= amount;
-						// printf("Proess %d get TRANSFER message from %d\n", id, info.receive_id);
-						//store_history(get_time(),balance_history[id]);
+					// if (info.receive_id == PARENT_ID) {
+					// 	balance_history[id].s_history->s_balance -= amount;
+					// 	// printf("Proess %d get TRANSFER message from %d\n", id, info.receive_id);
+					// 	//store_history(get_time(),balance_history[id]);
 
-						send(&info, order.s_dst, &msg);
-					} else {
-						// printf("Proess %d get TRANSFER message from %d\n", id, info.receive_id);
-						balance_history[id].s_history->s_balance += amount;
-						//store_history(get_time(), balance_history[id]);
+					// 	send(&info, order.s_dst, &msg);
+					// } else {
+					// 	// printf("Proess %d get TRANSFER message from %d\n", id, info.receive_id);
+					// 	balance_history[id].s_history->s_balance += amount;
+					// 	//store_history(get_time(), balance_history[id]);
 
-						msg.s_header.s_local_time = time(NULL);
-						msg.s_header.s_magic = MESSAGE_MAGIC;
-						msg.s_header.s_type = ACK;
-						msg.s_header.s_payload_len = 0;
-						send(&info, PARENT_ID, &msg);
-					}
+					// 	msg.s_header.s_local_time = time(NULL);
+					// 	msg.s_header.s_magic = MESSAGE_MAGIC;
+					// 	msg.s_header.s_type = ACK;
+					// 	msg.s_header.s_payload_len = 0;
+					// 	send(&info, PARENT_ID, &msg);
+					// }
 				} break;
 			case STOP: {
 					isWork = false;
@@ -162,7 +173,7 @@ int child_start(int id){
 				printf("Process %d get DONE message\n", id);
 			} break;
 			case STARTED: {
-				printf("Process %d get STARTED message\n", id);
+				// printf("Process %d get STARTED message\n", id);
 				started_count--;
 				if(started_count == 0){
 					sprintf(str, log_received_all_started_fmt, id);
@@ -172,6 +183,7 @@ int child_start(int id){
 			default:
 				break;
 			}
+			sleep(1);
 		}
 	}
       	//log_print(curPipes.eventsLog, events_log, str);
@@ -208,21 +220,22 @@ int parent_start(int id){
           printf("%s", str);
           //log_print(curPipes.eventsLog, events_log, str);
 
-	  bank_robbery(&curPipes, targetFork);
-
+	bank_robbery(&curPipes, targetFork);
+	
           /*send STOP message*/
 	  len = sprintf(str, log_done_fmt, id);
           send_message(len, str, STOP);
-          printf("%s", str);
-          log_print(curPipes.eventsLog, events_log, str);
+        //   printf("%s", str);
+        //   log_print(curPipes.eventsLog, events_log, str);
 	
-	  /*recieve balance_history message*/
-	  recieve_message(len, str, BALANCE_HISTORY);
-	  sprintf(str, log_received_all_done_fmt, id);
-          printf("%s", str);
-          //log_print(curPipes.eventsLog, events_log, str);
+	//   /*recieve balance_history message*/
+	//   recieve_message(len, str, BALANCE_HISTORY);
+	//   sprintf(str, log_received_all_done_fmt, id);
+        //   printf("%s", str);
+        //   //log_print(curPipes.eventsLog, events_log, str);
 	
-  	  //print_history(&all);	  
+  	//   //print_history(&all);	  
+
 
 	  for(i = 1; i<= targetFork; i++){
 		  wait(NULL);
