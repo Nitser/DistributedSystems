@@ -10,6 +10,7 @@ int send(void * self, local_id dst, const Message * msg) {
 	
 	if (write_size != message_size) {
 		printf("Can`t write to pipe; message_size = %zu; write_size = %zu\n", message_size, write_size);
+		fflush(stdout);
 		return -1;
 	}
 	return 0;
@@ -69,11 +70,13 @@ int openPipes( ProcessPipes *curPipes ){
 		for( i = 0; i <= curPipes->quantity; i++){			
 			if( i != pid ){
                 		if (pipe(curPipes->writePipes[pid][i]) == -1) {
-                        		printf("Error to open %d - %d pipe\n",pid, i); 	
+                        		printf("Error to open %d - %d pipe\n",pid, i);
+								fflush(stdout);
 					return -1;
 				}
 				if (fcntl(curPipes->writePipes[pid][i][0], F_SETFL, O_NONBLOCK) < 0){
 					printf("problem in fcntl");
+					fflush(stdout);
 				}
 				sprintf(str, "Open %d - %d pipe\n", pid, i); 
 				log_print(fpipes_log, pipes_log, str);
@@ -91,21 +94,25 @@ int closeUnusingPipesById( ProcessPipes curPipes, int pid){
 			if ( i != pid && j != pid && i != j ) {
 				if ( close(curPipes.writePipes[i][j][0]) == -1) {
                                         printf("Error closing reading end of pipe %d in %d.\n", i, j);
+										fflush(stdout);
                                         return -1;
                                 }
                                 if ( close(curPipes.writePipes[i][j][1]) == -1) {
                                         printf("Error closing writing end of pipe %d in %d.\n", i, j);
+										fflush(stdout);
                                         return -1;
                                 }
 			//	printf("Process %d: close unusing pipe %d - %d\n", pid, i, j);
 			} else if ( i!=j && i == pid ){
 				 if ( close(curPipes.writePipes[i][j][0]) == -1) {
                                         printf("Error closing reading end of pipe %d in %d.\n", i, j);
+										fflush(stdout);
                                         return -1;
                                 }
 			} else if ( i!=j && j == pid ) {
 				 if ( close(curPipes.writePipes[i][j][1]) == -1) {
                                         printf("Error closing writing of pipe %d in %d.\n", i, j);
+										fflush(stdout);
                                         return -1;
                                 }
 			}

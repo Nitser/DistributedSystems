@@ -27,6 +27,7 @@ FILE * log_open(const char * const filename)
 void log_print(FILE * fp, const char * const filename, const char * const fmt) 
 {
 	fprintf(fp, "%s", fmt);
+	fflush(fp);
 }
 
 void log_close( FILE * fp ){

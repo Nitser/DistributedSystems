@@ -75,6 +75,7 @@ void transfer(void * parent_data, local_id src, local_id dst, balance_t amount)
 	getDataFromMsg(&order, send_msg.s_payload, send_msg.s_header.s_payload_len);
         if ( send(&w_fd, src, &send_msg) == -1) {
                printf("error to send transfer msg\n"); 
+	       fflush(stdout);
         }
 	//printf("%s", str);
 	//log_print(curPipes.eventsLog, events_log, str);	
@@ -92,6 +93,7 @@ void transfer(void * parent_data, local_id src, local_id dst, balance_t amount)
 	}
 	getDataFromMsg(recieve_message.s_payload, &order, recieve_message.s_header.s_payload_len);
 	printf("Main get message from %d about %d-%d operation\n", order.s_dst, order.s_src, order.s_dst);
+	fflush(stdout);
 	//log_print(curPipes.eventsLog, events_log, str);
 
 }
@@ -112,6 +114,7 @@ int child_start(int id, int sum){
 	
 	send_message(len, str, STARTED);
 	printf("%s", str);
+	fflush(stdout);
         log_print(curPipes.eventsLog, events_log, str);
 
 	bool hasStop = false;
@@ -128,14 +131,16 @@ int child_start(int id, int sum){
 
 					if (order.s_src == id) {
 						sum -= amount;
-						printf("Proess %d get TRANSFER message from %d\n", id, PARENT_ID);
-						
+						fflush(stdout);
+
 						int w_fd = curPipes.writePipes[id][order.s_dst][1];
 						send(&w_fd, order.s_dst, &msg);
 					} else {
 						sum += amount;
 						printf("Proess %d get TRANSFER message from %d\n", id, order.s_src);
-						
+
+						fflush(stdout);
+
 						msg.s_header.s_type = ACK;
 						int w_fd = curPipes.writePipes[id][PARENT_ID][1];
 						send(&w_fd, PARENT_ID, &msg);
@@ -144,7 +149,7 @@ int child_start(int id, int sum){
 					state.s_balance = sum;
 					state.s_balance_pending_in = 0;
 					state.s_time = time(NULL);
-					// state.s_time = get_physical_time();
+					state.s_time = get_physical_time();
 					
 					balance_history.s_history[i] = state;
 					i++;
@@ -152,10 +157,12 @@ int child_start(int id, int sum){
 			case STOP: {
 					hasStop = true;
 					printf("Process %d get STOP message\n", id);
+					fflush(stdout);
 					len = sprintf(str, log_done_fmt, id);
 					sleep(1);
 					send_message(len, str, DONE);
 					printf("%s", str);
+					fflush(stdout);
 					if(done_count == 0)
 						isWork = false;
         				// log_print(curPipes.eventsLog, events_log, str);
@@ -168,6 +175,7 @@ int child_start(int id, int sum){
 						isWork = false;
 					sprintf(str, log_received_all_done_fmt, id);
         				printf("%s", str);
+					fflush(stdout);
 					// log_print(curPipes.eventsLog, events_log, str);
 
 					int w_fd = curPipes.writePipes[id][0][1];
@@ -183,6 +191,7 @@ int child_start(int id, int sum){
 				if(started_count == 0){
 					sprintf(str, log_received_all_started_fmt, id);
         				printf("%s", str);
+					fflush(stdout);
 				}
 			} break;
 			default:
@@ -208,6 +217,7 @@ int parent_start(int id){
 	  recieve_message(len, str, STARTED);
 	  sprintf(str, log_received_all_started_fmt, id);
           printf("%s", str);
+	  fflush(stdout);
           //log_print(curPipes.eventsLog, events_log, str);
 
 	  bank_robbery(&curPipes, targetFork);
@@ -220,10 +230,10 @@ int parent_start(int id){
 	
 	  /*recieve balance_history message*/
 	  recieve_message(len, str, BALANCE_HISTORY);
-	//   sprintf(str, log_received_all_done_fmt, id);
           printf("Main process get all balance history message\n");
           //log_print(curPipes.eventsLog, events_log, str);
-  	//   print_history(&all);	  
+  	
+	  //   print_history(&all);	  
 
 
 	  for(i = 1; i<= targetFork; i++){
@@ -247,11 +257,13 @@ int main(int argc, char * argv[])
                         if (errno != 0 || *p != '\0' || conv > INT_MAX) 
 			{
                                 printf("Use key -p X n1 n2 n3 ...\n");
+				fflush(stdout);
                                 return 1;
                         } else {
                                 targetFork = conv;
 				if (argc != conv + 3) {
 					printf("Use key -p X n1 n2 n3 ...\n");
+					fflush(stdout);
 					return 1;
 				}
 				money_balance = malloc(sizeof(int) * conv);
@@ -261,10 +273,12 @@ int main(int argc, char * argv[])
                         }
                 } else {
                         printf("Use key -p X n1 n2 n3 ...\n");
+			fflush(stdout);
                         return 1;
                 }
         } else {
                 printf("Use key -p X n1 n2 n3 ...\n");
+		fflush(stdout);
                 return 0;
         }
 
@@ -275,6 +289,7 @@ int main(int argc, char * argv[])
                 if(id == 0) {
                         if (openPipes(&curPipes) == -1) {
                                 printf("Wrong event with open pipes\n");
+				fflush(stdout);
                 		return 1;
                         }
         	}
