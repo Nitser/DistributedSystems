@@ -74,6 +74,7 @@ void transfer(void * parent_data, local_id src, local_id dst, balance_t amount)
 	getDataFromMsg(&order, send_msg.s_payload, send_msg.s_header.s_payload_len);
         if ( send(&w_fd, src, &send_msg) == -1) {
                printf("error to send transfer msg\n"); 
+	       fflush(stdout);
         }
 	//printf("%s", str);
 	//log_print(curPipes.eventsLog, events_log, str);	
@@ -91,6 +92,7 @@ void transfer(void * parent_data, local_id src, local_id dst, balance_t amount)
 	}
 	getDataFromMsg(recieve_message.s_payload, &order, recieve_message.s_header.s_payload_len);
 	printf("Main get message from %d about %d-%d operation\n", order.s_dst, order.s_src, order.s_dst);
+	fflush(stdout);
 	//log_print(curPipes.eventsLog, events_log, str);
 
 }
@@ -110,6 +112,7 @@ int child_start(int id){
 	
 	send_message(len, str, STARTED);
 	printf("%s", str);
+	fflush(stdout);
         log_print(curPipes.eventsLog, events_log, str);
 
 	bool hasStop = false;
@@ -129,6 +132,7 @@ int child_start(int id){
 					if (order.s_src == id) {
 						balance_history.s_history->s_balance -= amount;
 						printf("Proess %d get TRANSFER message from %d\n", id, PARENT_ID);
+						fflush(stdout);
 						//store_history(get_time(),balance_history[id]);
 
 						int w_fd = curPipes.writePipes[id][order.s_dst][1];
@@ -136,6 +140,7 @@ int child_start(int id){
 					} else {
 						balance_history.s_history->s_balance += amount;
 						printf("Proess %d get TRANSFER message from %d\n", id, order.s_src);
+						fflush(stdout);
 						//store_history(get_time(), balance_history[id]);
 
 						msg.s_header.s_type = ACK;
@@ -146,9 +151,11 @@ int child_start(int id){
 			case STOP: {
 					hasStop = true;
 					printf("Process %d get STOP message\n", id);
+					fflush(stdout);
 					len = sprintf(str, log_done_fmt, id);
 					send_message(len, str, DONE);
 					printf("%s", str);
+					fflush(stdout);
 					if(done_count == 0)
 						isWork = false;
         				// log_print(curPipes.eventsLog, events_log, str);
@@ -162,6 +169,7 @@ int child_start(int id){
 						isWork = false;
 					sprintf(str, log_received_all_done_fmt, id);
         				printf("%s", str);
+					fflush(stdout);
 					// log_print(curPipes.eventsLog, events_log, str);
 				} 
 			} break;
@@ -170,6 +178,7 @@ int child_start(int id){
 				if(started_count == 0){
 					sprintf(str, log_received_all_started_fmt, id);
         				printf("%s", str);
+					fflush(stdout);
 				}
 			} break;
 			default:
@@ -196,6 +205,7 @@ int parent_start(int id){
 	  recieve_message(len, str, STARTED);
 	  sprintf(str, log_received_all_started_fmt, id);
           printf("%s", str);
+	  fflush(stdout);
           //log_print(curPipes.eventsLog, events_log, str);
 
 	  bank_robbery(&curPipes, targetFork);
@@ -236,11 +246,13 @@ int main(int argc, char * argv[])
                         if (errno != 0 || *p != '\0' || conv > INT_MAX) 
 			{
                                 printf("Use key -p X n1 n2 n3 ...\n");
+				fflush(stdout);
                                 return 1;
                         } else {
                                 targetFork = conv;
 				if (argc != conv + 3) {
 					printf("Use key -p X n1 n2 n3 ...\n");
+					fflush(stdout);
 					return 1;
 				}
 				money_balance = malloc(sizeof(int) * conv);
@@ -250,10 +262,12 @@ int main(int argc, char * argv[])
                         }
                 } else {
                         printf("Use key -p X n1 n2 n3 ...\n");
+			fflush(stdout);
                         return 1;
                 }
         } else {
                 printf("Use key -p X n1 n2 n3 ...\n");
+		fflush(stdout);
                 return 0;
         }
 
@@ -264,6 +278,7 @@ int main(int argc, char * argv[])
                 if(id == 0) {
                         if (openPipes(&curPipes) == -1) {
                                 printf("Wrong event with open pipes\n");
+				fflush(stdout);
                 		return 1;
                         }
         	}
