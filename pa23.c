@@ -18,6 +18,13 @@
 ProcessPipes curPipes;
 int targetFork;
 int *money_balance;
+AllHistory all;
+
+void getDataFromMsg(void* msgData, void* outData, size_t size)
+{
+	for(int i=0; i<size; i++)
+		((char*)outData)[i] = ((char*)msgData)[i];
+}
 
 int send_message(int len, char* str, MessageType type){
 	Message send_msg = create_message(str, len, type);
@@ -37,9 +44,9 @@ void recieve_message(int len, char* str, MessageType type){
                         	sleep(1);
                 	} else if(type == BALANCE_HISTORY){
 				BalanceHistory balance ;
-				memcpy (&balance, recieve_message.s_payload, sizeof(recieve_message.s_payload));
-				//all.s_history[i-1] = balance;
-				//all.s_history_len++;
+				getDataFromMsg(recieve_message.s_payload, &balance, recieve_message.s_header.s_payload_len);
+				all.s_history[i-1] = balance;
+				all.s_history_len++;
 			}
         	}
 	} else {
@@ -51,12 +58,6 @@ void recieve_message(int len, char* str, MessageType type){
                 }
 
 	}
-}
-
-void getDataFromMsg(void* msgData, void* outData, size_t size)
-{
-	for(int i=0; i<size; i++)
-		((char*)outData)[i] = ((char*)msgData)[i];
 }
 
 void transfer(void * parent_data, local_id src, local_id dst, balance_t amount)
@@ -95,12 +96,13 @@ void transfer(void * parent_data, local_id src, local_id dst, balance_t amount)
 
 }
 
-int child_start(int id){
+int child_start(int id, int sum){
 	// init history
 	BalanceHistory balance_history;
 	balance_history.s_id = id;
 	balance_history.s_history_len = 0;
 
+	int i = 0;
 	int started_count = curPipes.quantity-1;
 	int done_count = curPipes.quantity-1;
 	curPipes.id = id;
@@ -116,44 +118,48 @@ int child_start(int id){
 	bool isWork = true;
 	while (isWork) { 
 		Message msg;
-		// store_history(get_time(), pBalance[selfId]);
 
 		if (receive_any(&curPipes, &msg) == 0) {
 			switch (msg.s_header.s_type) {
 			case TRANSFER: {				
 					TransferOrder order;
 					getDataFromMsg(msg.s_payload, &order, msg.s_header.s_payload_len);
-					
 					int amount = order.s_amount;
 
 					if (order.s_src == id) {
-						balance_history.s_history->s_balance -= amount;
+						sum -= amount;
 						printf("Proess %d get TRANSFER message from %d\n", id, PARENT_ID);
-						//store_history(get_time(),balance_history[id]);
-
+						
 						int w_fd = curPipes.writePipes[id][order.s_dst][1];
 						send(&w_fd, order.s_dst, &msg);
 					} else {
-						balance_history.s_history->s_balance += amount;
+						sum += amount;
 						printf("Proess %d get TRANSFER message from %d\n", id, order.s_src);
-						//store_history(get_time(), balance_history[id]);
-
+						
 						msg.s_header.s_type = ACK;
 						int w_fd = curPipes.writePipes[id][PARENT_ID][1];
 						send(&w_fd, PARENT_ID, &msg);
 					}
+					BalanceState state;
+					state.s_balance = sum;
+					state.s_balance_pending_in = 0;
+					state.s_time = time(NULL);
+					// state.s_time = get_physical_time();
+					
+					balance_history.s_history[i] = state;
+					i++;
 				} break;
 			case STOP: {
 					hasStop = true;
 					printf("Process %d get STOP message\n", id);
 					len = sprintf(str, log_done_fmt, id);
+					sleep(1);
 					send_message(len, str, DONE);
 					printf("%s", str);
 					if(done_count == 0)
 						isWork = false;
         				// log_print(curPipes.eventsLog, events_log, str);
 					
-					//store_history(get_time(), balance_history[id]);
 				} break;
 			case DONE: {
 				done_count--;
@@ -163,6 +169,13 @@ int child_start(int id){
 					sprintf(str, log_received_all_done_fmt, id);
         				printf("%s", str);
 					// log_print(curPipes.eventsLog, events_log, str);
+
+					int w_fd = curPipes.writePipes[id][0][1];
+					Message send_msg = create_message(str, sizeof balance_history, BALANCE_HISTORY);
+					getDataFromMsg(&balance_history, send_msg.s_payload, send_msg.s_header.s_payload_len);
+        				if ( send(&w_fd, 0, &send_msg) == -1) {
+               					printf("error to send transfer msg\n"); 
+        				}
 				} 
 			} break;
 			case STARTED: {
@@ -189,7 +202,6 @@ int parent_start(int id){
 	  char str[MAX_PAYLOAD_LEN] = "";
           int i;
           curPipes.id = id;
-	  //all.s_history_len = 0;
           closeUnusingPipesById(curPipes, id);
 	  int len = sprintf(str, log_started_fmt, id, getpid(), getppid());
 		
@@ -206,13 +218,12 @@ int parent_start(int id){
         //   printf("%s", str);
         //   log_print(curPipes.eventsLog, events_log, str);
 	
-	//   /*recieve balance_history message*/
-	//   recieve_message(len, str, BALANCE_HISTORY);
+	  /*recieve balance_history message*/
+	  recieve_message(len, str, BALANCE_HISTORY);
 	//   sprintf(str, log_received_all_done_fmt, id);
-        //   printf("%s", str);
-        //   //log_print(curPipes.eventsLog, events_log, str);
-	
-  	//   //print_history(&all);	  
+          printf("Main process get all balance history message\n");
+          //log_print(curPipes.eventsLog, events_log, str);
+  	//   print_history(&all);	  
 
 
 	  for(i = 1; i<= targetFork; i++){
@@ -272,7 +283,7 @@ int main(int argc, char * argv[])
         } while((forkResult != 0 && forkResult != -1) && (id < targetFork));
 
 	if(forkResult == 0) {
-		child_start(id);
+		child_start(id, (int)argv[id + 2]);
 	} else if(forkResult != -1){
 		parent_start(0);
 	} else {
