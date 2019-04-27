@@ -38,6 +38,8 @@ int receive(void * self, local_id from, Message * msg) {
 	size_t message_size = sizeof(MessageHeader) + (*msg).s_header.s_payload_len;
 	size_t body_size = read(r_fd, msg->s_payload, message_size);
 	if ((header_size+body_size) != message_size) {
+		// printf("can`t recive, header_size = %d, body_size = %d\n", header_size, body_size);
+		fflush(stdout);
 		return -1;
 	}
 	return 0;

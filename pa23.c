@@ -236,13 +236,17 @@ int parent_start(int id){
 	int complitet_balance = 1;
 	while (complitet_balance <= targetFork) {
 		Message msg = create_message("", sizeof(BalanceHistory), BALANCE_HISTORY);
-		if (receive_any(&curPipes, &msg) == 0 && msg.s_header.s_type == BALANCE_HISTORY) {
-			BalanceHistory current_history;
-			getDataFromMsg(msg.s_payload, &current_history, msg.s_header.s_payload_len);
-			all_history->s_history[current_history.s_id - 1] = current_history;
-			printf("complite id = %d, balance %d\n", current_history.s_id, current_history.s_history[0].s_balance);
-			fflush(stdout);
-			complitet_balance++;
+		if (receive_any(&curPipes, &msg) == 0) {
+			if (msg.s_header.s_type == BALANCE_HISTORY) {
+				BalanceHistory current_history;
+				getDataFromMsg(msg.s_payload, &current_history, msg.s_header.s_payload_len);
+				all_history->s_history[current_history.s_id - 1] = current_history;
+				printf("complite id = %d, balance %d\n", current_history.s_id, current_history.s_history[0].s_balance);
+				fflush(stdout);
+				complitet_balance++;
+			}
+		} else {
+			sleep(1);
 		}
 	}
 	//log_print(curPipes.eventsLog, events_log, str);
