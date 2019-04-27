@@ -1,5 +1,6 @@
 #include "pipe.h"
 #include "common.h"
+#include "banking.h"
 #include <errno.h>
 #include <fcntl.h>
 
@@ -19,7 +20,7 @@ int send(void * self, local_id dst, const Message * msg) {
 int send_multicast(void * self, const Message * msg) {
 	ProcessPipes *pipes = (ProcessPipes*)self;
 	int pid = pipes->id;
-	sleep(1);
+	// sleep(1);
 	for (local_id id = 0; id <= pipes->quantity; id++) {
 		int w_fd = pipes->writePipes[pid][id][1];
 		if (w_fd != -1 && pid != id) {
@@ -37,7 +38,6 @@ int receive(void * self, local_id from, Message * msg) {
 	size_t message_size = sizeof(MessageHeader) + (*msg).s_header.s_payload_len;
 	size_t body_size = read(r_fd, msg->s_payload, message_size);
 	if ((header_size+body_size) != message_size) {
-//	if (header_size != sizeof(MessageHeader)) {
 		return -1;
 	}
 	return 0;
@@ -153,21 +153,20 @@ MessageHeader create_message_header(uint16_t payload_len, MessageType type) {
 	header.s_magic= MESSAGE_MAGIC;
 	header.s_payload_len = payload_len;
 	header.s_type = type;
-	header.s_local_time  = time(NULL);
+	header.s_local_time  = get_physical_time();
 	return header;
 }
 
 MessageHeader create_empty_message_header(){
 	MessageHeader header;
 	header.s_magic = MESSAGE_MAGIC;
-	header.s_local_time = time(NULL);
+	header.s_local_time = get_physical_time();
 	return header;
 }
 
 Message create_message(char *payload, uint16_t payload_len, MessageType type) {
 	Message msg;
 	msg.s_header = create_message_header(payload_len, type);
-	//strcpy(msg.s_payload, payload);
 	memcpy(msg.s_payload, &payload, payload_len);
  	return msg;
 }

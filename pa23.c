@@ -33,12 +33,11 @@ int send_message(int len, char* str, MessageType type){
 }
 
 void recieve_message(int len, void* str, MessageType type){
-        int i;
+        int i = 1;
         Message recieve_message = create_message("", len, type); 
-	for(i = 1; i <= targetFork; i++){
-		if(receive_any(&curPipes, &recieve_message) == -1){
-			i--;
-			sleep(1);
+	while(i < targetFork) {
+		if(receive_any(&curPipes, &recieve_message) == 0) {
+			i++;
 		}
 	}
 }
@@ -138,20 +137,16 @@ int child_start(int id, int sum){
 
 					if (order.s_src == id) {
 						sum -= amount;
-						fflush(stdout);
-
 						int w_fd = curPipes.writePipes[id][order.s_dst][1];
 						send(&w_fd, order.s_dst, &msg);
 					} else {
 						sum += amount;
-						printf("Proess %d get TRANSFER message from %d\n", id, order.s_src);
- 
-						fflush(stdout);
-
 						msg.s_header.s_type = ACK;
 						int w_fd = curPipes.writePipes[id][PARENT_ID][1];
 						send(&w_fd, PARENT_ID, &msg);
 					}
+					printf("Proess %d get TRANSFER message from %d\n", id, order.s_src);
+					fflush(stdout);
 					set_new_history_state(&balance_history, get_physical_time(), sum);
 				} break;
 			case STOP: {
@@ -159,7 +154,7 @@ int child_start(int id, int sum){
 					printf("Process %d get STOP message\n", id);
 					fflush(stdout);
 					len = sprintf(str, log_done_fmt, id);
-					sleep(1);
+					// sleep(1);
 					send_message(len, str, DONE);
 					printf("%s", str);
 					fflush(stdout);
@@ -236,7 +231,6 @@ int parent_start(int id){
 	recieve_message(len, str, DONE);
 
 	/*recieve balance_history message*/
-	sleep(1);
 	AllHistory *all_history = malloc(sizeof(AllHistory));
 	all_history->s_history_len = targetFork;
 	int complitet_balance = 1;
