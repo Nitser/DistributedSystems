@@ -14,6 +14,10 @@ fi
 LD_PRELOAD="$PATH_TO_RUNTIME_LIB"
 
 clang --library-directory "$PATH_TO_LIBRARY_DIR" -std=c99 -Wall -pedantic *.c -lruntime -o start
+if [ $? -ne 0 ]; then
+    echo "Can't compile"
+    exit 1
+fi
 
 count=1
 if [ ! -z $1 ]; then
