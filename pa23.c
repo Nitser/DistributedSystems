@@ -24,12 +24,9 @@ void getDataFromMsg(void* msgData, void* outData, size_t size)
 		((char*)outData)[i] = ((char*)msgData)[i];
 }
 
-int send_message(int len, char* str, MessageType type){
+void send_message(int len, char* str, MessageType type){
 	Message send_msg = create_message(str, len, type);
-        if (send_multicast(&curPipes, &send_msg) == -1) {
-		return -1;
-	}
-	return 0;
+	while(send_multicast(&curPipes, &send_msg) == -1) {}
 }
 
 void recieve_all_messages(MessageType type){
@@ -39,7 +36,6 @@ void recieve_all_messages(MessageType type){
 		if(receive_any(&curPipes, &receive_message) != -1 && receive_message.s_header.s_type == type) {
 			i++;
 		} else {
-			printf("pause \n");
 			sleep(1);
 		}
 	}
