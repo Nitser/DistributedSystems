@@ -38,8 +38,6 @@ int receive(void * self, local_id from, Message * msg) {
 	size_t message_size = sizeof(MessageHeader) + (*msg).s_header.s_payload_len;
 	size_t body_size = read(r_fd, msg->s_payload, message_size);
 	if ((header_size+body_size) != message_size) {
-		// printf("can`t recive, header_size = %d, body_size = %d\n", header_size, body_size);
-		fflush(stdout);
 		return -1;
 	}
 	return 0;
@@ -104,7 +102,6 @@ int closeUnusingPipesById( ProcessPipes curPipes, int pid){
 										fflush(stdout);
                                         return -1;
                                 }
-			//	printf("Process %d: close unusing pipe %d - %d\n", pid, i, j);
 			} else if ( i!=j && i == pid ){
 				 if ( close(curPipes.writePipes[i][j][0]) == -1) {
                                         printf("Error closing reading end of pipe %d in %d.\n", i, j);
@@ -127,10 +124,6 @@ int closeUsingPipesById( ProcessPipes curPipes, int pid ){
 	int i;
        	for( i = 0; i <= curPipes.quantity; i++){ 
 			if(pid != i){
-				/*if ( close(curPipes.writePipes[pid][i][0]) == -1) {
-						printf("Error closing reading end of pipe %d in %d.\n", i, pid);
-						return -1;
-				}*/
 				if ( close(curPipes.writePipes[pid][i][1]) == -1) {
 						printf("Error closing writing end of pipe %d in %d.\n", i, pid);
 						return -1;
@@ -139,12 +132,6 @@ int closeUsingPipesById( ProcessPipes curPipes, int pid ){
 					printf("Error closing reading end of pipe %d in %d.\n", i, pid);
 					return -1;
 				}
-				/*if ( close(curPipes.writePipes[i][pid][1]) == -1) {
-						printf("Error closing writing end of pipe %d in %d.\n", i, pid);
-						return -1;
-				}*/
-				//printf("Process %d: close unusing pipe %d - %d\n", pid, pid, i);
-				//printf("Process %d: close unusing pipe %d - %d\n", pid, i, pid);
 			}
 	}
 	return 0;
