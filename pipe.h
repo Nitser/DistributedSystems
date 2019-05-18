@@ -31,3 +31,6 @@ int closeUsingPipesById( ProcessPipes curPipes, int pid);
 
 MessageHeader create_message_header(uint16_t payload_len, MessageType type);
 Message create_message(char *payload, uint16_t payload_len, MessageType type);
+
+void increment_time();
+void sync_time(timestamp_t new_time);
