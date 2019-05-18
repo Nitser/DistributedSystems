@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include "pipe.h"
 #include "common.h"
 #include "banking.h"
@@ -34,7 +36,10 @@ int send_multicast(void * self, const Message * msg) {
 
 int receive(void * self, local_id from, Message * msg) {
 	int r_fd = *((int*)self);
-	size_t header_size = read(r_fd, &(msg->s_header), sizeof(MessageHeader));
+	int header_size = read(r_fd, &(msg->s_header), sizeof(MessageHeader));
+	if (header_size < 0) {
+		return -1;
+	}
 	size_t message_size = sizeof(MessageHeader) + (*msg).s_header.s_payload_len;
 	size_t body_size = 0;
 	if ((*msg).s_header.s_payload_len != 0) {
@@ -72,14 +77,10 @@ int openPipes( ProcessPipes *curPipes ){
        	for(pid = 0; pid <= curPipes->quantity; pid++){ 
 		for(i = 0; i <= curPipes->quantity; i++){			
 			if(i != pid ){
-				if (pipe(curPipes->writePipes[pid][i]) == -1) {
+				if (pipe2(curPipes->writePipes[pid][i], O_NONBLOCK) == -1) {
 					printf("Error to open %d - %d pipe\n",pid, i);
 					fflush(stdout);
 					return -1;
-				}
-				if (fcntl(curPipes->writePipes[pid][i][0], F_SETFL, O_NONBLOCK) < 0){
-					printf("problem in fcntl");
-					fflush(stdout);
 				}
 				sprintf(str, "Open %d - %d pipe\n", pid, i); 
 				log_print(fpipes_log, pipes_log, str);
