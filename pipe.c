@@ -6,6 +6,21 @@
 #include <errno.h>
 #include <fcntl.h>
 
+timestamp_t current_time = 0;
+
+timestamp_t get_lamport_time() {
+	return current_time;
+}
+
+void increment_time() {
+	current_time++;
+}
+
+void sync_time(timestamp_t new_time) {
+	current_time = new_time > current_time ? new_time : current_time;
+	current_time++;
+}
+
 int send(void * self, local_id dst, const Message * msg) {
 	int w_fd = *((int*)self);
 	ssize_t message_size = sizeof(MessageHeader) + (*msg).s_header.s_payload_len;
@@ -48,6 +63,7 @@ int receive(void * self, local_id from, Message * msg) {
 	if ((header_size+body_size) != message_size) {
 		return -1;
 	}
+	sync_time(msg->s_header.s_local_time);
 	return 0;
 }
 
@@ -61,6 +77,7 @@ int receive_any(void * self, Message * msg) {
 		if (r_fd != -1 && pid != id) {
 			if (receive(&r_fd, id, msg) == -1) {
 			} else {
+				sync_time(msg->s_header.s_local_time);
 				found = 0;
 				return found;
 			}
@@ -146,14 +163,14 @@ MessageHeader create_message_header(uint16_t payload_len, MessageType type) {
 	header.s_magic= MESSAGE_MAGIC;
 	header.s_payload_len = payload_len;
 	header.s_type = type;
-	header.s_local_time  = get_physical_time();
+	header.s_local_time  = get_lamport_time();
 	return header;
 }
 
 MessageHeader create_empty_message_header(){
 	MessageHeader header;
 	header.s_magic = MESSAGE_MAGIC;
-	header.s_local_time = get_physical_time();
+	header.s_local_time = get_lamport_time();
 	return header;
 }
 
