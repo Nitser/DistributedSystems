@@ -80,25 +80,25 @@ void set_new_history_state(BalanceHistory *history, timestamp_t time, balance_t 
 		}
 	}
 
-	BalanceState current_state;
+	BalanceState *current_state;
 	
 	if (index < 0 || index >= history->s_history_len) {
 		if (history->s_history_len > 0) {
-			current_state = history->s_history[history->s_history_len - 1];
-			if (current_state.s_time < time - 1) {
+			current_state = &history->s_history[history->s_history_len - 1];
+			if (current_state->s_time < time - 1) {
 				for (timestamp_t t = history->s_history[history->s_history_len - 1].s_time + 1; t < time; t++) {
-					set_new_history_state(history, t, current_state.s_balance, current_state.s_balance_pending_in);
+					set_new_history_state(history, t, current_state->s_balance, current_state->s_balance_pending_in);
 				}
 			}
 		}
-		history->s_history[history->s_history_len] = current_state;
+		current_state = &history->s_history[history->s_history_len];
 		history->s_history_len++;
 	} else {
-		history->s_history[index] = current_state;
+		current_state = &history->s_history[index];
 	}
-	current_state.s_balance = amount;
-	current_state.s_time = time;
-	current_state.s_balance_pending_in = pending;
+	current_state->s_balance = amount;
+	current_state->s_time = time;
+	current_state->s_balance_pending_in = pending;
 	
 }
 int child_start(int id, balance_t sum){
@@ -120,7 +120,7 @@ int child_start(int id, balance_t sum){
 	balance_history.s_id = id;
 	balance_history.s_history_len = 0;
 
-	set_new_history_state(&balance_history, get_lamport_time(), sum, 0);
+	set_new_history_state(&balance_history, 0, sum, 0);
 
 	bool hasStop = false;
 	bool isWork = true;
@@ -156,13 +156,13 @@ int child_start(int id, balance_t sum){
 
 					sum += amount;
 
-					set_new_history_state(&balance_history, get_lamport_time(), sum, 0);
-
-					increment_time();
 					// printf("sum2 = %d \n", sum);
 					msg.s_header.s_type = ACK;
 					int w_fd = curPipes.writePipes[id][PARENT_ID][1];
 					send(&w_fd, PARENT_ID, &msg);
+
+					set_new_history_state(&balance_history, get_lamport_time(), sum, 0);
+					increment_time();
 				}
 
 			} break;
@@ -192,14 +192,14 @@ int child_start(int id, balance_t sum){
 					log_print(curPipes.eventsLog, events_log, str);
 					
 					increment_time();
-
+					set_new_history_state(&balance_history, get_lamport_time(), sum, 0);
 					int w_fd = curPipes.writePipes[id][PARENT_ID][1];
 					Message send_msg = create_message(str, sizeof(balance_history), BALANCE_HISTORY);
 					getDataFromMsg(&balance_history, send_msg.s_payload, sizeof(balance_history));
 					if (send(&w_fd, 0, &send_msg) == -1) {
 						printf("error to send transfer msg\n"); 
 					}
-					set_new_history_state(&balance_history, get_lamport_time(), sum, 0);
+					
 				} 
 			} break;
 			case STARTED: {
