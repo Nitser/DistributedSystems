@@ -59,12 +59,13 @@ int receive(void * self, local_id from, Message * msg) {
 		return -1;
 	}
 
-	if ((*msg).s_header.s_payload_len > 0) {
-		int payload_size = read(r_fd, msg->s_payload, (*msg).s_header.s_payload_len);
+	if (msg->s_header.s_payload_len > 0) {
+		int payload_size = read(r_fd, msg->s_payload, msg->s_header.s_payload_len);
 		if (payload_size < 0) {
 			return -1;
 		}
 	}
+
 	sync_time(msg->s_header.s_local_time);
 	return 0;
 }
@@ -75,13 +76,16 @@ int receive_any(void * self, Message * msg) {
 	pid = pipes->id;
 	int found = -1;
 	for (local_id id = 0; id <= pipes->quantity; id++) {
-		int r_fd = pipes->writePipes[id][pid][0];
-		if (r_fd != -1 && pid != id) {
-			if (receive(&r_fd, id, msg) == 0) {
-				found = 0;
-				return found;
+		if (id != pid) {
+			int r_fd = pipes->writePipes[id][pid][0];
+			if (r_fd != -1) {
+				if (receive(&r_fd, id, msg) == 0) {
+					found = 0;
+					return found;
+				}
 			}
 		}
+		
 	}
 	return found;
 }
@@ -177,6 +181,8 @@ MessageHeader create_empty_message_header(){
 Message create_message(char *payload, uint16_t payload_len, MessageType type) {
 	Message msg;
 	msg.s_header = create_message_header(payload_len, type);
-	memcpy(msg.s_payload, &payload, payload_len);
+	if (payload_len > 0) {
+		memcpy(msg.s_payload, &payload, payload_len);
+	}
  	return msg;
 }

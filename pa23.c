@@ -63,7 +63,7 @@ void transfer(void * parent_data, local_id src, local_id dst, balance_t amount) 
 	Message recieve_message = create_message("", 0, ACK);
 	int r_fd = curPipes.writePipes[dst][id][0];
 	while(1) {
-		if(receive(&r_fd, dst, &recieve_message) != -1 && recieve_message.s_header.s_type == ACK){
+		if(receive(&r_fd, dst, &recieve_message) == 0){
 			break;
 		} else {
 			sleep(1);
@@ -80,6 +80,7 @@ void set_new_history_state(BalanceHistory *history, timestamp_t time, balance_t 
 		}
 	}
 
+	// printf("time %d amount = %d pending = %d\n", time, amount, pending);
 	BalanceState *current_state;
 	
 	if (index < 0 || index >= history->s_history_len) {
@@ -129,7 +130,7 @@ int child_start(int id, balance_t sum){
 		Message msg;
 		if (receive_any(&curPipes, &msg) != -1) {
 			switch (msg.s_header.s_type) {
-			case TRANSFER: {				
+			case TRANSFER: {		
 				TransferOrder order;
 				getDataFromMsg(msg.s_payload, &order, msg.s_header.s_payload_len);
 				balance_t amount = order.s_amount;
@@ -162,6 +163,7 @@ int child_start(int id, balance_t sum){
 
 					// printf("sum2 = %d \n", sum);
 					msg.s_header.s_type = ACK;
+					msg.s_header.s_local_time = get_lamport_time();
 					int w_fd = curPipes.writePipes[id][PARENT_ID][1];
 					send(&w_fd, PARENT_ID, &msg);
 				}
