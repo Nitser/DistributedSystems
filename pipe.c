@@ -52,19 +52,17 @@ int send_multicast(void * self, const Message * msg) {
 int receive(void * self, local_id from, Message * msg) {
 	int r_fd = *((int*)self);
 	int header_size = read(r_fd, &(msg->s_header), sizeof(MessageHeader));
-	if (header_size < 0) {
-		return -1;
+	if (header_size > 0) {
+		if ((*msg).s_header.s_payload_len > 0) {
+			int payload_size = read(r_fd, msg->s_payload, (*msg).s_header.s_payload_len);
+			if (payload_size < 0) {
+				return -1;
+			}
+		}
+		sync_time(msg->s_header.s_local_time);
+		return 0;
 	}
-	size_t message_size = sizeof(MessageHeader) + (*msg).s_header.s_payload_len;
-	size_t body_size = 0;
-	if ((*msg).s_header.s_payload_len != 0) {
-		body_size = read(r_fd, msg->s_payload, message_size);
-	}
-	if ((header_size+body_size) != message_size) {
-		return -1;
-	}
-	sync_time(msg->s_header.s_local_time);
-	return 0;
+	return -1;	
 }
 
 int receive_any(void * self, Message * msg) {
