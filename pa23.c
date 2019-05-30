@@ -96,18 +96,19 @@ void set_new_history_state(BalanceHistory *history, timestamp_t time, balance_t 
 	} else {
 		current_state = &history->s_history[index];
 	}
+
 	current_state->s_balance = amount;
 	current_state->s_time = time;
 	current_state->s_balance_pending_in = pending;
 	
 }
 int child_start(int id, balance_t sum){
-	increment_time();
 	int done_count = curPipes.quantity-1;
 	int started_count = curPipes.quantity-1;
 	curPipes.id = id;
 	closeUnusingPipesById(curPipes, id);
 
+	increment_time();
         char str[MAX_PAYLOAD_LEN] = "";
 	int len = sprintf(str, log_started_fmt, get_lamport_time(), id, getpid(), getppid(), sum);
 	send_message(len, str, STARTED);
@@ -156,13 +157,13 @@ int child_start(int id, balance_t sum){
 
 					sum += amount;
 
+					set_new_history_state(&balance_history, get_lamport_time(), sum, 0);
+					increment_time();
+
 					// printf("sum2 = %d \n", sum);
 					msg.s_header.s_type = ACK;
 					int w_fd = curPipes.writePipes[id][PARENT_ID][1];
 					send(&w_fd, PARENT_ID, &msg);
-
-					set_new_history_state(&balance_history, get_lamport_time(), sum, 0);
-					increment_time();
 				}
 
 			} break;
@@ -191,8 +192,9 @@ int child_start(int id, balance_t sum){
 					fflush(stdout);
 					log_print(curPipes.eventsLog, events_log, str);
 					
-					increment_time();
 					set_new_history_state(&balance_history, get_lamport_time(), sum, 0);
+					increment_time();
+
 					int w_fd = curPipes.writePipes[id][PARENT_ID][1];
 					Message send_msg = create_message(str, sizeof(balance_history), BALANCE_HISTORY);
 					getDataFromMsg(&balance_history, send_msg.s_payload, sizeof(balance_history));
@@ -229,7 +231,6 @@ int parent_start(int id){
 	int i;
 	curPipes.id = id;
 	closeUnusingPipesById(curPipes, id);
-	increment_time();
 
 	/*receive all started message*/
         recieve_all_messages(STARTED);
@@ -237,6 +238,7 @@ int parent_start(int id){
 	bank_robbery(&curPipes, targetFork);
 
 	/*send STOP message*/
+	increment_time();
 	send_message(0, "", STOP);
 
 	/*recive all done message*/
@@ -267,8 +269,8 @@ int parent_start(int id){
 	closeUsingPipesById(curPipes, id);
 	fflush(stdout);
 	print_history(all_history);
-	free(all_history);
 	log_close(curPipes.eventsLog);
+	free(all_history);
 	return 0;
 }
 

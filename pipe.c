@@ -18,7 +18,7 @@ void increment_time() {
 
 void sync_time(timestamp_t new_time) {
 	current_time = new_time > current_time ? new_time : current_time;
-	current_time++;
+	++current_time;
 }
 
 int send(void * self, local_id dst, const Message * msg) {
@@ -50,19 +50,23 @@ int send_multicast(void * self, const Message * msg) {
 }
 
 int receive(void * self, local_id from, Message * msg) {
+	if (self == NULL || msg == NULL) {
+		return -1;
+	}
 	int r_fd = *((int*)self);
 	int header_size = read(r_fd, &(msg->s_header), sizeof(MessageHeader));
-	if (header_size > 0) {
-		if ((*msg).s_header.s_payload_len > 0) {
-			int payload_size = read(r_fd, msg->s_payload, (*msg).s_header.s_payload_len);
-			if (payload_size < 0) {
-				return -1;
-			}
-		}
-		sync_time(msg->s_header.s_local_time);
-		return 0;
+	if (header_size < 0) {
+		return -1;
 	}
-	return -1;	
+
+	if ((*msg).s_header.s_payload_len > 0) {
+		int payload_size = read(r_fd, msg->s_payload, (*msg).s_header.s_payload_len);
+		if (payload_size < 0) {
+			return -1;
+		}
+	}
+	sync_time(msg->s_header.s_local_time);
+	return 0;
 }
 
 int receive_any(void * self, Message * msg) {
@@ -73,9 +77,7 @@ int receive_any(void * self, Message * msg) {
 	for (local_id id = 0; id <= pipes->quantity; id++) {
 		int r_fd = pipes->writePipes[id][pid][0];
 		if (r_fd != -1 && pid != id) {
-			if (receive(&r_fd, id, msg) == -1) {
-			} else {
-				sync_time(msg->s_header.s_local_time);
+			if (receive(&r_fd, id, msg) == 0) {
 				found = 0;
 				return found;
 			}
