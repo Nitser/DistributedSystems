@@ -37,7 +37,7 @@ int send(void * self, local_id dst, const Message * msg) {
 int send_multicast(void * self, const Message * msg) {
 	ProcessPipes *pipes = (ProcessPipes*)self;
 	int pid = pipes->id;
-	sleep(1);
+	// sleep(1);
 	for (local_id id = 0; id <= pipes->quantity; id++) {
 		int w_fd = pipes->writePipes[pid][id][1];
 		if (w_fd != -1 && pid != id) {

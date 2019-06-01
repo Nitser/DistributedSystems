@@ -36,7 +36,7 @@ void recieve_all_messages(MessageType type){
 		if(receive_any(&curPipes, &receive_message) != -1 && receive_message.s_header.s_type == type) {
 			i++;
 		} else {
-			sleep(1);
+			// sleep(1);
 		}
 	}
 }
@@ -175,7 +175,6 @@ int child_start(int id, balance_t sum){
 				if(done_count == 0)
 					isWork = false;
 
-				sleep(1);
 				len = sprintf(str, log_done_fmt, get_lamport_time(), id, sum);
 				send_message(len, str, DONE);
 				printf("%s", str);
@@ -243,36 +242,48 @@ int parent_start(int id){
 	increment_time();
 	send_message(0, "", STOP);
 
-	/*recive all done message*/
-	recieve_all_messages(DONE);
-
 	/*recieve balance_history message*/
 	AllHistory *all_history = malloc(sizeof(AllHistory));
 	all_history->s_history_len = targetFork;
-	int complitet_balance = 1;
-	while (complitet_balance <= targetFork) {
-		Message msg = create_message("", sizeof(BalanceHistory), BALANCE_HISTORY);
-		if (receive_any(&curPipes, &msg) != -1) {
+	int complitet_balance = 0;
+	int done_count = 0;
+	while (1) {
+		Message msg;
+		if (receive_any(&curPipes, &msg) == 0) {
 			if (msg.s_header.s_type == BALANCE_HISTORY) {
+				fflush(stdout);
 				BalanceHistory current_history;
 				getDataFromMsg(msg.s_payload, &current_history, msg.s_header.s_payload_len);
 				all_history->s_history[current_history.s_id - 1] = current_history;
-				fflush(stdout);
 				complitet_balance++;
+				if(complitet_balance == targetFork){
+					printf("Parent get all BALANCE msg\n");
+					fflush(stdout);
+				}
+				if (done_count == targetFork && complitet_balance == targetFork) {
+					break;
+				}
+			} else if (msg.s_header.s_type == DONE) {
+				done_count++;
+				if(done_count == targetFork){
+					printf("Parent get all DONE msg\n");
+					fflush(stdout);
+				}
+				if (done_count == targetFork && complitet_balance == targetFork) {
+					break;
+				}
 			}
-		} else {
-			sleep(1);
 		}
 	}
 
 	for(i = 1; i<= targetFork; i++){
 		wait(NULL);
 	}
-	closeUsingPipesById(curPipes, id);
-	fflush(stdout);
+	
 	print_history(all_history);
-	log_close(curPipes.eventsLog);
 	free(all_history);
+	fflush(stdout);
+	closeUsingPipesById(curPipes, id);
 	return 0;
 }
 
@@ -333,5 +344,7 @@ int main(int argc, char * argv[])
                 perror("Error while calling the fork function\n");
                 return -1;
         }
+	printf("end\n");
+	fflush(stdout);
    	return 0;
 }
